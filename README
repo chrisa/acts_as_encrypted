@@ -1,4 +1,32 @@
 ActsAsEncrypted
 ===============
 
-Description goes here
+Quick start:
+
+ * gem install daemons
+
+ * Get QuickCert here: http://segment7.net/projects/ruby/QuickCert/QuickCert-1.0.2.tar.gz
+   Install with ruby setup.rb
+
+*  Generate some keys in plugins/acts_as_encrypted/keys:
+ 
+   $ cd plugins/acts_as_encrypted/keys
+   $ vi qc_config
+   [change passphrases etc]
+   $ QuickCert
+   [CA, server keys/certs and client certs generated]
+
+ * Start server:
+
+   $ cd plugins/acts_as_encrypted
+   $ ./bin/server.rb run
+   Enter PEM pass phrase: ****
+   
+ * Run test
+
+   $ cd $RAILS_ROOT
+   $ ruby vendor/plugins/acts_as_encrypted/test/acts_as_encrypted_test.rb
+   Loaded suite vendor/plugins/acts_as_encrypted/test/acts_as_encrypted_test
+   Started
+   ...
+ 
