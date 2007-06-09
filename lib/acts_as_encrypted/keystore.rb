@@ -8,14 +8,13 @@ module ActsAsEncrypted
         return init_keystore
       end
 
-      puts "reading #{@config[:filename]}"
-      
       ciphertext = File.read(@config[:filename])
       ksdata = @config[:SSLPrivateKey].private_decrypt(ciphertext)
       return ksdata
     end
 
     def get_current_key(family)
+      # TODO. 
       return "\203\306\226:\253\026J:\236\306r\355$\326V\370\232\357\252w6\006;\265\032J\272\240\222\342\256\325"
     end
 

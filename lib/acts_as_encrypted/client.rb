@@ -25,14 +25,11 @@ module ActsAsEncrypted
     end
 
     def encrypt(family, plaintext)
-      puts "encrypting #{plaintext} with key family #{family}"
       @service.encrypt(family, plaintext)
     end
     
     def decrypt(family, iv, ciphertext)
-      plaintext = @service.decrypt(family, iv, ciphertext)
-      puts "decrypted: #{plaintext} with key family #{family}"
-      plaintext
+      @service.decrypt(family, iv, ciphertext)
     end
 
   end

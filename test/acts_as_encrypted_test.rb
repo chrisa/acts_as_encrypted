@@ -6,12 +6,14 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
   def test_creditcard
     c = Creditcard.new
     assert c
+
+    ccnum = "1234567812344523"
     
-    c.ccnum = "123456781234abcd"
+    c.ccnum = ccnum
     assert c.save
 
-    p c
-
-    assert_equal "abcd", c.ccnum_lastfour
+    assert_equal "4523", c.ccnum_lastfour
+    assert_equal ccnum, c.ccnum
+    assert c.ccnum_iv
   end
 end

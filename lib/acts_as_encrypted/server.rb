@@ -6,7 +6,6 @@ module ActsAsEncrypted
     def initialize(config)
       @config = config
       @config.delete(:SSLVerifyMode) # not relevant to us
-      
       @keystore = ActsAsEncrypted::KeyStore.new(@config)
     end
     
@@ -15,7 +14,6 @@ module ActsAsEncrypted
     end
 
     def encrypt(family, plaintext)
-      puts "server encrypt"
       key = find_key(family)
       cipher = get_cipher
       cipher.encrypt(key)
@@ -26,7 +24,6 @@ module ActsAsEncrypted
     end
     
     def decrypt(family, iv, ciphertext)
-      puts "server decrypt"
       key = find_key(family)
       cipher = get_cipher
       cipher.decrypt(key)
@@ -37,7 +34,6 @@ module ActsAsEncrypted
     end
 
     private
-    
     def find_key(family)
       @keystore.get_current_key(family)
     end
