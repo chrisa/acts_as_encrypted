@@ -1,4 +1,6 @@
 # ActsAsEncrypted
+require 'acts_as_encrypted/client'
+
 module ActsAsEncrypted
 
   def self.included(base)
@@ -31,13 +33,13 @@ module ActsAsEncrypted
         self["#{key}_#{unenc['column']}"] = unenc['proc'].call(self[key])
       end
       encrypts_cols.each_key do |col|
-        self[col] = "encrypted: #{self[col]}"
+        self[col], self["#{col}_iv"] = ActsAsEncrypted::Client.new.encrypt(family, self[col])
       end
     end
 
     def decrypt
       encrypts_cols.each_key do |col|
-        self[col] = "decrypted: #{self[col]}"
+        self[col] = ActsAsEncrypted::Client.new.decrypt(family, self["#{col}_iv"], self[col])
       end
     end
   end

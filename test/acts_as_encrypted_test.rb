@@ -10,6 +10,8 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     c.ccnum = "123456781234abcd"
     assert c.save
 
+    p c
+
     assert_equal "abcd", c.ccnum_lastfour
   end
 end
