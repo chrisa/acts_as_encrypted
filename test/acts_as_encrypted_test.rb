@@ -15,5 +15,12 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     assert_equal "4523", c.ccnum_lastfour
     assert_equal ccnum, c.ccnum
     assert c.ccnum_iv
+
+    rc = RawCreditcard.find(c.id)
+    assert rc
+
+    assert_equal rc.ccnum_iv, c.ccnum_iv
+    assert_equal rc.ccnum_lastfour, c.ccnum_lastfour
+    assert_not_equal rc.ccnum, c.ccnum
   end
 end
