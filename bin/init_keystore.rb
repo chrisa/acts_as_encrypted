@@ -21,4 +21,4 @@ config = {
   :filename             => keystore
 }
   
-ks = ActsAsEncrypted::KeyStore.new(config)
+ks = ActsAsEncrypted::Keystore.new(config)
