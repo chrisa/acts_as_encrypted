@@ -22,10 +22,6 @@ module ActsAsEncrypted
     def self.engine
       @@engine_class.new(@@config)
     end
-
-    def get_cipher
-      OpenSSL::Cipher::Cipher.new('AES-256-CBC')      
-    end
   end
 
   class Engine::Local < Engine
@@ -33,6 +29,10 @@ module ActsAsEncrypted
     def initialize(config)
       # server config -- required to decrypt keystore
       @keystore = ActsAsEncrypted::Keystore.new(config)
+    end
+
+    def get_cipher
+      OpenSSL::Cipher::Cipher.new('AES-256-CBC')      
     end
 
     def encrypt(family, plaintext)
