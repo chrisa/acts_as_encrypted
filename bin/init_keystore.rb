@@ -2,7 +2,8 @@
 
 require 'rubygems'
 require 'openssl'
-require File.expand_path(File.dirname(__FILE__) + "/../lib/acts_as_encrypted/keystore.rb")
+$:.push File.expand_path(File.dirname(__FILE__) + "/../lib")
+require 'acts_as_encrypted/keystore'
 
 cryptoroot = File.expand_path(File.dirname(__FILE__) + "/../keys")
 keystore = File.expand_path(File.dirname(__FILE__) + "/../keys/keystore")
@@ -21,4 +22,4 @@ config = {
   :filename             => keystore
 }
   
-ks = ActsAsEncrypted::Keystore.new(config)
+ActsAsEncrypted::Keystore.new(config)

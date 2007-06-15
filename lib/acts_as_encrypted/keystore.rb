@@ -7,12 +7,10 @@ module ActsAsEncrypted
       @config = config
       if @config[:initializing]
         @config.delete(:initializing)
-        ksdata = init_keystore
+        init_keystore
       else
-        ciphertext = File.read(@config[:filename])
-        ksdata = @config[:SSLPrivateKey].private_decrypt(ciphertext)
+        load
       end
-      @ks = Marshal.restore(ksdata)
     end
 
     def get_current_key(family)
@@ -38,6 +36,16 @@ module ActsAsEncrypted
       @ks[:family].keys
     end
 
+    def keys(family)
+      @ks[:family][family].keys
+    end
+
+    def each_key(family)
+      @ks[:family][family].keys.each do |k|
+        yield k
+      end
+    end
+
     def new_key(f, start)
       k = OpenSSL::Random.random_bytes(32)
       @ks[:family][f][start] = k
@@ -47,28 +55,68 @@ module ActsAsEncrypted
       @ks[:family][f] = Hash.new
     end
 
-    def save
-      write_keystore(Marshal.dump(@ks))
-    end
-    
     def init_keystore
-      ks = Hash.new
-      ks[:serial] = 0
-      ks[:family] = Hash.new
-      write_keystore(Marshal.dump(ks))
+      @ks = Hash.new
+      @ks[:serial] = 0
+      @ks[:family] = Hash.new
+      @kek = OpenSSL::Random.random_bytes(32)
+      save
     end
 
-    protected
-    def command_missing
-    end
-    
-    private
-    def write_keystore(ksdata)
+    def save
+      # set up a cipher to encrypt the keystore
+      cipher = get_cipher
+      cipher.encrypt(@kek)
+      iv = cipher.random_iv
+
+      # dump the keystore and pad it with a random length
+      ksdata = OpenSSL::Random.random_bytes(2)
+      len = ksdata.unpack("n").first
+      ksdata << OpenSSL::Random.random_bytes(len)
+      ksdata << Marshal.dump(@ks)
+
+      # encrypt the keystore with its KEK
+      ciphertext = cipher.update(ksdata)
+      ciphertext << cipher.final
+
+      # encrypt the KEK
       public_rsa = @config[:SSLPrivateKey].public_key
-      ciphertext = public_rsa.public_encrypt(ksdata)
-      File.open(@config[:filename],  "w") { |fp| fp << ciphertext }
-      ksdata
+      encrypted_key = public_rsa.public_encrypt(@kek)
+
+      # write out the encrypted KEK, the IV and the ciphertext
+      File.open(@config[:filename],  "w") do |fp| 
+        fp << encrypted_key
+        fp << iv
+        fp << ciphertext
+      end
     end
-    
+
+    def load
+      # read the keystore file and extract the parts
+      file = File.read(@config[:filename])
+      encrypted_key = file[0,128]
+      iv            = file[128,16]
+      ciphertext    = file[144, file.length - 144]
+      
+      # decrypt the KEK
+      @kek = @config[:SSLPrivateKey].private_decrypt(encrypted_key)
+      
+      # decrypt the keystore with the KEK and IV
+      cipher = get_cipher
+      cipher.decrypt(@kek)
+      cipher.iv = iv
+      ksdata = cipher.update(ciphertext)
+      ksdata << cipher.final
+       
+      # remove the random offset and reanimate the keystore
+      offset = ksdata.slice!(0,2).unpack("n").first
+      ksdata.slice!(0,offset)
+      @ks = Marshal.restore(ksdata)
+    end
+
+    private
+    def get_cipher
+      OpenSSL::Cipher::Cipher.new('AES-256-CBC')
+    end
   end
 end

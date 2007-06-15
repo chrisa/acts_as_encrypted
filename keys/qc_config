@@ -10,7 +10,6 @@ CA[:password] = '1234'
 CERTS << {
   :type => 'server',
   :hostname => "#{hostname}-server",
-  :password => '5678'
 }
 
 CERTS << {

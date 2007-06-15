@@ -3,13 +3,18 @@
 require 'rubygems'
 require 'openssl'
 require 'cmd'
-require File.expand_path(File.dirname(__FILE__) + "/../lib/acts_as_encrypted/keystore.rb")
+$:.push File.expand_path(File.dirname(__FILE__) + "/../lib")
+require 'acts_as_encrypted/keystore'
 
 class Keytool < Cmd
   
   def do_list_families
-    @ks.each_family do |f|
-      puts f
+    if @ks.families.length
+      @ks.each_family do |f|
+        puts f
+      end
+    else
+      puts "no key families defined"
     end
   end
 
@@ -21,6 +26,16 @@ class Keytool < Cmd
     @ks.new_key(family, Time.now)
   end
 
+  def do_list_keys(family)
+    if @ks.keys(family).length
+      @ks.each_key(family) do |k|
+        puts k
+      end
+    else
+      puts "no keys for family #{family}"
+    end
+  end
+    
   def do_save
     @ks.save
   end
