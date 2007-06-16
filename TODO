@@ -1,0 +1,41 @@
+TODO for acts_as_encrypted
+==========================
+
+ * Performance
+
+    * We encrypt and decrypt too much, based on the callbacks set up
+      on ActiveRecord. Maybe make encryption / decryption a manual
+      process rather than always doing it?
+
+    * Make auto-decrypt / encrypt configurable per column?
+
+    * We reload and decrypt the keystore on every crypto op. This
+      means that changes to the keystore file are always picked up
+      immediately, but hurts performance.
+
+      We shouldn't do that, but there will need to be a
+      reload_keystore method if it's cached. 
+
+ * KeyTool
+
+    * Pretty up output.
+
+ * Tests
+
+    * keystore_test.rb should be testing get_current_key better -- 
+      the test missed the sort order being backwards.
+
+    * ... 
+ 
+ * Documentation
+
+    * Document configuration hash (keys, server location, keystore
+      path)
+
+    * Extend quickstart in README to include getting it running on an
+      ActiveRecord model.
+
+    * Document keytool
+
+    * Document acts_as_encrypted and encrypts macros for AR model
+      classes.
