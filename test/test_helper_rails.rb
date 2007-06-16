@@ -23,3 +23,11 @@ ks.save
 config.delete(:initializing)
 ActsAsEncrypted::Engine.engine = 'local'
 ActsAsEncrypted::Engine.config = config
+
+ActiveRecord::Schema.define(:version => 1) do
+  create_table :creditcards do |t|
+    t.column :ccnum, :string
+    t.column :ccnum_iv, :string
+    t.column :ccnum_lastfour, :string
+  end
+end
