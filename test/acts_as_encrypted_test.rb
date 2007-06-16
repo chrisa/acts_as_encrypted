@@ -2,6 +2,17 @@ require File.dirname(__FILE__) + '/test_helper'
 require File.dirname(__FILE__) + '/test_helper_rails'
 
 class ActsAsEncryptedTest < Test::Unit::TestCase
+
+  def setup
+     server_bin = File.expand_path(File.dirname(__FILE__) + "/../bin/server.rb")
+    `#{server_bin} start`
+  end
+    
+  def teardown
+     server_bin = File.expand_path(File.dirname(__FILE__) + "/../bin/server.rb")
+    `#{server_bin} stop`    
+  end
+
   def test_creditcard
     c = Creditcard.new
     assert c
