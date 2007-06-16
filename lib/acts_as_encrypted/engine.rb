@@ -37,18 +37,26 @@ module ActsAsEncrypted
       OpenSSL::Cipher::Cipher.new('AES-256-CBC')      
     end
 
-    def encrypt(family, plaintext)
-      key = @keystore.get_current_key(family)
+    def encrypt(family, start, plaintext)
+      if start 
+        key = @keystore.get_key(family, start)
+      else
+        key, start = @keystore.get_current_key(family)
+      end
       cipher = get_cipher
       cipher.encrypt(key)
       iv = cipher.random_iv
       ciphertext = cipher.update(plaintext)
       ciphertext << cipher.final
-      return Base64.encode64(ciphertext), Base64.encode64(iv)
+      return Base64.encode64(ciphertext).chomp, Base64.encode64(iv).chomp, start
     end
     
-    def decrypt(family, iv, ciphertext)
-      key = @keystore.get_current_key(family)
+    def decrypt(family, start, iv, ciphertext)
+      if start 
+        key = @keystore.get_key(family, start)
+      else
+        key, start = @keystore.get_current_key(family)
+      end
       cipher = get_cipher
       cipher.decrypt(key)
       cipher.iv = Base64.decode64(iv)
@@ -67,12 +75,12 @@ module ActsAsEncrypted
       @service = DRbObject.new nil, there
     end
 
-    def encrypt(family, plaintext)
-      @service.encrypt(family, plaintext)
+    def encrypt(family, start, plaintext)
+      @service.encrypt(family, start, plaintext)
     end
     
-    def decrypt(family, iv, ciphertext)
-      @service.decrypt(family, iv, ciphertext)
+    def decrypt(family, start, iv, ciphertext)
+      @service.decrypt(family, start, iv, ciphertext)
     end
 
   end

@@ -21,9 +21,20 @@ module ActsAsEncrypted
         raise "no family #{family}"
       end
       valid = @ks[:family][family.to_s].keys.select do |t|
-        t <= Time.now
+        t <= Time.now.to_i
       end
-      @ks[:family][family.to_s][valid.sort.first]
+      start = valid.sort.last
+      return @ks[:family][family.to_s][start], start
+    end
+
+    def get_key(family, start)
+      unless @ks[:family]
+        raise "empty keystore?"
+      end
+      unless @ks[:family][family.to_s]
+        raise "no family #{family}"
+      end
+      @ks[:family][family.to_s][start]
     end
 
     def each_family
@@ -47,6 +58,7 @@ module ActsAsEncrypted
     end
 
     def new_key(f, start)
+      start = start.to_i
       k = OpenSSL::Random.random_bytes(32)
       @ks[:family][f][start] = k
     end

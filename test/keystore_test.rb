@@ -29,8 +29,8 @@ class KeyStoreTest < Test::Unit::TestCase
     assert ks
     ks.create_family('foo')
 
-    (1..1000).each do 
-      ks.new_key('foo', Time.now)
+    (1..100).each do |i|
+      ks.new_key('foo', Time.now.to_i + i)
     end
     
     ks.save
@@ -38,7 +38,7 @@ class KeyStoreTest < Test::Unit::TestCase
     config.delete(:initializing)
     ks = ActsAsEncrypted::Keystore.new(config)
     assert_equal 1, ks.families.length
-    assert_equal 1000, ks.keys('foo').length
+    assert_equal 100, ks.keys('foo').length
   end
 
   def test_new_family

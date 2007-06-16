@@ -40,19 +40,43 @@ module ActsAsEncrypted
 
       # for each encrypted column, run encryption and store the
       # result into the same column.
-      encrypts_cols.each_key do |col|
+      encrypts_cols.each do |col, f|
         if self[col]
-          self[col], self["#{col}_iv"] = ActsAsEncrypted::Engine.engine.encrypt(family, self[col])
+          if self["#{f}_start"]
+            # encrypt with same key as before if we have one
+            self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, self["#{f}_start"], self[col])
+          else
+            # encrypt with current key
+            self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
+          end
         end
       end
     end
 
     def decrypt
-      encrypts_cols.each_key do |col|
+      encrypts_cols.each do |col, f|
         if self[col]
-          self[col] = ActsAsEncrypted::Engine.engine.decrypt(family, self["#{col}_iv"], self[col])
+          # decrypt with specific key start stored in db
+          self[col] = ActsAsEncrypted::Engine.engine.decrypt(f, self["#{f}_start"], self["#{col}_iv"], self[col])
         end
       end
+    end
+
+    def reencrypt
+      # for each encrypted column, run encryption and store the
+      # result into the same column.
+      encrypts_cols.each do |col, f|
+        if self[col]
+          # encrypt with current key
+          self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
+        end
+      end
+      decrypt
+    end
+
+    def after_find
+      # engage after_find callback, see:
+      # http://api.rubyonrails.org/classes/ActiveRecord/Callbacks.html
     end
   end
 

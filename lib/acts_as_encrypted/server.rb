@@ -30,14 +30,12 @@ module ActsAsEncrypted
       "ok"
     end
     
-    def encrypt(family, plaintext)
-      puts "server encrypt"
-      @engine.encrypt(family, plaintext)
+    def encrypt(family, start, plaintext)
+      @engine.encrypt(family, start, plaintext)
     end
 
-    def decrypt(family, iv, ciphertext)
-      puts "server decrypt"
-      @engine.decrypt(family, iv, ciphertext)
+    def decrypt(family, start, iv, ciphertext)
+      @engine.decrypt(family, start, iv, ciphertext)
     end
 
   end
