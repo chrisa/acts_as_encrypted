@@ -1,5 +1,7 @@
 require 'drb'
 require 'drb/ssl'
+require 'openssl'
+require 'base64'
 require 'acts_as_encrypted/keystore'
 
 module ActsAsEncrypted
@@ -42,15 +44,15 @@ module ActsAsEncrypted
       iv = cipher.random_iv
       ciphertext = cipher.update(plaintext)
       ciphertext << cipher.final
-      return ciphertext, iv
+      return Base64.encode64(ciphertext), Base64.encode64(iv)
     end
     
     def decrypt(family, iv, ciphertext)
       key = @keystore.get_current_key(family)
       cipher = get_cipher
       cipher.decrypt(key)
-      cipher.iv = iv 
-      plaintext = cipher.update(ciphertext)
+      cipher.iv = Base64.decode64(iv)
+      plaintext = cipher.update(Base64.decode64(ciphertext))
       plaintext << cipher.final
       return plaintext
     end
