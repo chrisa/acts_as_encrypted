@@ -18,6 +18,8 @@ config = {
 ks = ActsAsEncrypted::Keystore.new(config)
 ks.create_family('ccnum')
 ks.new_key('ccnum', Time.now)
+ks.create_family('name')
+ks.new_key('name', Time.now)
 ks.save
 
 config.delete(:initializing)
@@ -26,8 +28,21 @@ ActsAsEncrypted::Engine.config = config
 
 ActiveRecord::Schema.define(:version => 1) do
   create_table :creditcards do |t|
+    t.column :cardholder, :string
+    t.column :cardholder_iv, :string
     t.column :ccnum, :string
     t.column :ccnum_iv, :string
     t.column :ccnum_lastfour, :string
   end
+end
+
+class Creditcard < ActiveRecord::Base
+  acts_as_encrypted :ccnum
+  encrypts :ccnum, :lastfour => lambda { |cc| cc[-4,4] }
+  encrypts :cardholder, :family => :name
+end
+
+# For looking directly at the creditcards table in tests
+class RawCreditcard < ActiveRecord::Base
+  set_table_name :creditcards
 end

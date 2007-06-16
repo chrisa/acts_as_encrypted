@@ -29,17 +29,29 @@ module ActsAsEncrypted
   
   module InstanceMethods
     def encrypt
+      # for each left-unencrypted column set up, run the proc
+      # on the column value and store the result into the 
+      # left-unenc column.
       unencrypted.each do |key, unenc|
-        self["#{key}_#{unenc['column']}"] = unenc['proc'].call(self[key])
+        if self[key]
+          self["#{key}_#{unenc['column']}"] = unenc['proc'].call(self[key])
+        end
       end
+
+      # for each encrypted column, run encryption and store the
+      # result into the same column.
       encrypts_cols.each_key do |col|
-        self[col], self["#{col}_iv"] = ActsAsEncrypted::Engine.engine.encrypt(family, self[col])
+        if self[col]
+          self[col], self["#{col}_iv"] = ActsAsEncrypted::Engine.engine.encrypt(family, self[col])
+        end
       end
     end
 
     def decrypt
       encrypts_cols.each_key do |col|
-        self[col] = ActsAsEncrypted::Engine.engine.decrypt(family, self["#{col}_iv"], self[col])
+        if self[col]
+          self[col] = ActsAsEncrypted::Engine.engine.decrypt(family, self["#{col}_iv"], self[col])
+        end
       end
     end
   end
