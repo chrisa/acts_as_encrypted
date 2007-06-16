@@ -2,13 +2,10 @@
 
 require 'rubygems'
 require 'daemons'
-require 'drb'
-require 'drb/ssl'
 
 $:.push File.expand_path(File.dirname(__FILE__) + "/../lib")
 require 'acts_as_encrypted/server.rb'
 
-here = "drbssl://localhost:3456"
 cryptoroot = File.expand_path(File.dirname(__FILE__) + "/../keys")
 
 full_hostname = `hostname`.strip
@@ -20,10 +17,10 @@ config = {
   :SSLCertificate       => OpenSSL::X509::Certificate.new(File.read("#{cryptoroot}/#{hostname}-server/cert_#{hostname}-server.pem")),
   :SSLCACertificateFile => "#{cryptoroot}/CA/cacert.pem",
   :filename             => "#{cryptoroot}/keystore",
+  :server               => "localhost:3456",
 }
 
 Daemons.run_proc('encryption_server') do
   server = ActsAsEncrypted::Server.new(config)
-  DRb.start_service here, server.api, config
-  DRb.thread.join
+  server.run
 end

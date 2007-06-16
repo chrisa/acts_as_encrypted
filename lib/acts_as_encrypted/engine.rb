@@ -62,7 +62,7 @@ module ActsAsEncrypted
   class Engine::Remote < Engine
 
     def initialize(config)
-      there = 'drbssl://localhost:3456'
+      there = "drbssl://#{config[:server]}"
       DRb.start_service nil, nil, config
       @service = DRbObject.new nil, there
     end

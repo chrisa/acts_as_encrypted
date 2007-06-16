@@ -42,6 +42,7 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
       :SSLCACertificateFile => "#{cryptoroot}/CA/cacert.pem",
       :SSLPrivateKey        => OpenSSL::PKey::RSA.new(File.read("#{cryptoroot}/#{hostname}/#{hostname}_keypair.pem")),
       :SSLCertificate       => OpenSSL::X509::Certificate.new(File.read("#{cryptoroot}/#{hostname}/cert_#{hostname}.pem")),
+      :server               => 'localhost:3456'
     }    
     ActsAsEncrypted::Engine.engine = 'remote'
     ActsAsEncrypted::Engine.config = config

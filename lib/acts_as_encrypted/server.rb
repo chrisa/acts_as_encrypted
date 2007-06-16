@@ -1,13 +1,22 @@
+require 'drb'
+require 'drb/ssl'
 require 'acts_as_encrypted/engine'
 
 module ActsAsEncrypted
   class Server
     def initialize(config)
-      @engine = ActsAsEncrypted::Engine::Local.new(config)
+      @config = config
+      @engine = ActsAsEncrypted::Engine::Local.new(@config)
     end
 
     def api
       Server::API.new(@engine)
+    end
+
+    def run
+      here = "drbssl://#{@config[:server]}"
+      DRb.start_service here, api, @config
+      DRb.thread.join
     end
     
   end
