@@ -9,13 +9,6 @@ TODO for acts_as_encrypted
 
     * Make auto-decrypt / encrypt configurable per column?
 
-    * We reload and decrypt the keystore on every crypto op. This
-      means that changes to the keystore file are always picked up
-      immediately, but hurts performance.
-
-      We shouldn't do that, but there will need to be a
-      reload_keystore method if it's cached. 
-
  * KeyTool
 
     * Pretty up output.

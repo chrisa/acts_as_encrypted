@@ -83,6 +83,31 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     assert_nil c.cardholder_iv
   end
 
+  def test_multiple_ops
+    c = Creditcard.new
+    assert c
+
+    ccnum = "1234567812344523"
+    c.ccnum = ccnum
+    assert c.save
+    engine1 = ActsAsEncrypted::Engine.engine.object_id
+
+    ccnum = "1234567812344524"
+    c.ccnum = ccnum
+    assert c.save
+    engine2 = ActsAsEncrypted::Engine.engine.object_id
+
+    ActsAsEncrypted::Engine.reload
+    
+    ccnum = "1234567812344525"
+    c.ccnum = ccnum
+    assert c.save
+    engine3 = ActsAsEncrypted::Engine.engine.object_id
+    
+    assert_equal engine1, engine2
+    assert_not_equal engine1, engine3
+  end    
+
   def test_key_rollover
     # set up a new keystore and configure AEE to use it
     cryptoroot = File.expand_path(File.dirname(__FILE__) + "/keys")

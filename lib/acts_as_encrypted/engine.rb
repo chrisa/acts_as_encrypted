@@ -22,7 +22,11 @@ module ActsAsEncrypted
     end
     
     def self.engine
-      @@engine_class.new(@@config)
+      @@engine ||= @@engine_class.new(@@config)
+    end
+
+    def self.reload
+      @@engine = @@engine_class.new(@@config)
     end
   end
 
