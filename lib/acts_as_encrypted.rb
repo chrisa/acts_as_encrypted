@@ -42,7 +42,7 @@ module ActsAsEncrypted
       # result into the same column.
       encrypts_cols.each do |col, f|
         if self[col]
-          if self["#{f}_start"]
+          if self["#{f}_start"] && self["#{f}_start"] > 0
             # encrypt with same key as before if we have one
             self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, self["#{f}_start"], self[col])
           else
