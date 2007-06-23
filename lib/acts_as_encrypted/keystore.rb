@@ -24,6 +24,10 @@ module ActsAsEncrypted
         t <= Time.now.to_i
       end
       start = valid.sort.last
+      unless start && @ks[:family][family.to_s][start]
+        raise "no valid key in family #{family}"
+      end
+
       return @ks[:family][family.to_s][start], start
     end
 
@@ -34,7 +38,12 @@ module ActsAsEncrypted
       unless @ks[:family][family.to_s]
         raise "no family #{family}"
       end
-      @ks[:family][family.to_s][start]
+      unless @ks[:family][family.to_s][start]
+        p @ks[:family][family.to_s]
+        raise "no key #{start} in family #{family}"
+      end
+
+      return @ks[:family][family.to_s][start]
     end
 
     def each_family

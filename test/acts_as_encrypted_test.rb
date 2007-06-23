@@ -15,12 +15,17 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
       :filename             => "#{cryptoroot}/keystore",
       :initializing         => true
     }
-    ks = ActsAsEncrypted::Keystore.new(config)
-    ks.create_family('ccnum')
-    ks.new_key('ccnum', Time.now)
-    ks.create_family('name')
-    ks.new_key('name', Time.now)
-    ks.save
+    @ks = ActsAsEncrypted::Keystore.new(config)
+    @ks.create_family('ccnum')
+    @ks.new_key('ccnum', Time.now)
+    @ks.create_family('name')
+    @ks.new_key('name', Time.now)
+    @ks.save
+
+    config.delete(:initializing)
+    ActsAsEncrypted::Engine.engine = 'local'
+    ActsAsEncrypted::Engine.config = config
+    ActsAsEncrypted::Engine.reload
     
     server_bin = File.expand_path(File.dirname(__FILE__) + "/../bin/server.rb")
     `#{server_bin} start`
@@ -68,6 +73,21 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     assert_equal name, fc.cardholder
   end
 
+  def test_tainting
+    c = Creditcard.new
+    assert c
+
+    ccnum = "1234567812344523"
+    name = "A N Other"
+    c.ccnum = ccnum
+    c.cardholder = name
+    assert c.save
+
+    fc = Creditcard.find(c.id)
+    assert_equal ccnum, fc.ccnum
+    assert_equal name, fc.cardholder
+  end
+
   def test_try_encrypting_nil
     c = Creditcard.new
     assert c
@@ -109,25 +129,6 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
   end    
 
   def test_key_rollover
-    # set up a new keystore and configure AEE to use it
-    cryptoroot = File.expand_path(File.dirname(__FILE__) + "/keys")
-    config = {
-      :SSLVerifyMode        => OpenSSL::SSL::VERIFY_PEER | OpenSSL::SSL::VERIFY_FAIL_IF_NO_PEER_CERT,
-      :SSLPrivateKey        => OpenSSL::PKey::RSA.new(File.read("#{cryptoroot}/testhost-server/testhost-server_keypair.pem")),
-      :SSLCertificate       => OpenSSL::X509::Certificate.new(File.read("#{cryptoroot}/testhost-server/cert_testhost-server.pem")),
-      :SSLCACertificateFile => "#{cryptoroot}/CA/cacert.pem",
-      :filename             => "#{cryptoroot}/keystore_for_rollover_test",
-      :initializing         => true
-    }
-    ks = ActsAsEncrypted::Keystore.new(config)
-    ks.create_family('ccnum')
-    ks.new_key('ccnum', Time.now)
-    ks.create_family('name')
-    ks.new_key('name', Time.now)
-    ks.save
-    ActsAsEncrypted::Engine.engine = 'local'
-    ActsAsEncrypted::Engine.config = config
-    
     # save a credit card with the current key
     c = Creditcard.new
     assert c
@@ -137,13 +138,10 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     c.cardholder = name
     assert c.save
     
-    # generate a couple of new keys - don't reinit keystore!
-    config.delete(:initializing)
-    ks = ActsAsEncrypted::Keystore.new(config)
-    sleep 2 # get a tick to make sure new key has different time
-    ks.new_key('ccnum', Time.now)
-    ks.new_key('name', Time.now)
-    ks.save
+    @ks.new_key('ccnum', Time.now + 1)
+    @ks.new_key('name', Time.now + 1)
+    @ks.save
+    ActsAsEncrypted::Engine.reload
     
     # check the raw row is there
     rc = RawCreditcard.find(c.id)

@@ -40,8 +40,11 @@ module ActsAsEncrypted
 
       # for each encrypted column, run encryption and store the
       # result into the same column.
+      @decrypts ||= Hash.new
       encrypts_cols.each do |col, f|
         if self[col]
+          # keep a copy of the plaintext to avoid tainting
+          plaintext = self[col]
           if self["#{f}_start"] && self["#{f}_start"] > 0
             # encrypt with same key as before if we have one
             self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, self["#{f}_start"], self[col])
@@ -49,19 +52,27 @@ module ActsAsEncrypted
             # encrypt with current key
             self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
           end
+          # save the plaintext
+          # @decrypts[col] = plaintext
         end
       end
     end
 
     def decrypt
+      @decrypts ||= Hash.new
       encrypts_cols.each do |col, f|
-        if self[col]
-          # decrypt with specific key start stored in db
-          self[col] = ActsAsEncrypted::Engine.engine.decrypt(f, self["#{f}_start"], self["#{col}_iv"], self[col])
+        if @decrypts && @decrypts[col]
+          self[col] = @decrypts[col]
+        else
+          if self[col]
+            # decrypt with specific key start stored in db
+            self[col] = ActsAsEncrypted::Engine.engine.decrypt(f, self["#{f}_start"], self["#{col}_iv"], self[col])
+            # @decrypts[col] = self[col]
+          end
         end
       end
     end
-
+    
     def reencrypt
       # for each encrypted column, run encryption and store the
       # result into the same column.
@@ -78,6 +89,18 @@ module ActsAsEncrypted
       # engage after_find callback, see:
       # http://api.rubyonrails.org/classes/ActiveRecord/Callbacks.html
     end
+  end
+    
+  class ActiveRecord::Base
+    def write_attribute_with_tainting(attr_name, value)
+      if encrypts_cols.include?(attr_name)
+        @decrypts[attr_name] = nil
+      end
+      write_attribute_without_tainting(attr_name, value)
+    end
+
+    alias_method :write_attribute_without_tainting, :write_attribute 
+    alias_method :write_attribute, :write_attribute_with_tainting
   end
 
   module ActMacro

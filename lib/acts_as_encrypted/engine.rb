@@ -26,7 +26,7 @@ module ActsAsEncrypted
     end
 
     def self.reload
-      @@engine = @@engine_class.new(@@config)
+      @@engine = nil
     end
   end
 
