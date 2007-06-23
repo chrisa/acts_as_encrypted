@@ -1,6 +1,9 @@
 require 'openssl'
 
 module ActsAsEncrypted
+
+  class KeyNotFoundError < StandardError; end
+
   class Keystore
 
     def initialize(config)
@@ -15,17 +18,17 @@ module ActsAsEncrypted
 
     def get_current_key(family)
       unless @ks[:family]
-        raise "empty keystore?"
+        raise KeyNotFoundError.new("empty keystore?")
       end
       unless @ks[:family][family.to_s]
-        raise "no family #{family}"
+        raise KeyNotFoundError.new("no family #{family}")
       end
       valid = @ks[:family][family.to_s].keys.select do |t|
         t <= Time.now.to_i
       end
       start = valid.sort.last
       unless start && @ks[:family][family.to_s][start]
-        raise "no valid key in family #{family}"
+        raise KeyNotFoundError.new("no valid key in family #{family}")
       end
 
       return @ks[:family][family.to_s][start], start
@@ -33,14 +36,13 @@ module ActsAsEncrypted
 
     def get_key(family, start)
       unless @ks[:family]
-        raise "empty keystore?"
+        raise KeyNotFoundError.new("empty keystore?")
       end
       unless @ks[:family][family.to_s]
-        raise "no family #{family}"
+        raise KeyNotFoundError.new("no family #{family}")
       end
       unless @ks[:family][family.to_s][start]
-        p @ks[:family][family.to_s]
-        raise "no key #{start} in family #{family}"
+        raise KeyNotFoundError.new("no key #{start} in family #{family}")
       end
 
       return @ks[:family][family.to_s][start]

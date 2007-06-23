@@ -98,9 +98,6 @@ module ActsAsEncrypted
       end
       write_attribute_without_tainting(attr_name, value)
     end
-
-    alias_method :write_attribute_without_tainting, :write_attribute 
-    alias_method :write_attribute, :write_attribute_with_tainting
   end
 
   module ActMacro
@@ -119,7 +116,9 @@ module ActsAsEncrypted
       write_inheritable_attribute :unencrypted, Hash.new
       class_inheritable_accessor :encrypts_cols
       class_inheritable_accessor :unencrypted
+
+      alias_method_chain :write_attribute, :tainting
     end
+    
   end
-  
 end

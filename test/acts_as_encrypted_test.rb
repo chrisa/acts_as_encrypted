@@ -138,8 +138,8 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     c.cardholder = name
     assert c.save
     
-    @ks.new_key('ccnum', Time.now + 1)
-    @ks.new_key('name', Time.now + 1)
+    @ks.new_key('ccnum', Time.now.to_i + 1)
+    @ks.new_key('name', Time.now.to_i + 1)
     @ks.save
     ActsAsEncrypted::Engine.reload
     

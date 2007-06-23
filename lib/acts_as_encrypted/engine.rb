@@ -6,6 +6,8 @@ require 'acts_as_encrypted/keystore'
 
 module ActsAsEncrypted
 
+  class CryptoFailureError < StandardError; end
+
   class Engine
     def self.engine=(engine)
       if (engine == 'local')
@@ -47,11 +49,15 @@ module ActsAsEncrypted
       else
         key, start = @keystore.get_current_key(family)
       end
-      cipher = get_cipher
-      cipher.encrypt(key)
-      iv = cipher.random_iv
-      ciphertext = cipher.update(plaintext)
-      ciphertext << cipher.final
+      begin
+        cipher = get_cipher
+        cipher.encrypt(key)
+        iv = cipher.random_iv
+        ciphertext = cipher.update(plaintext)
+        ciphertext << cipher.final
+      rescue
+        raise CryptoFailureError.new
+      end
       return Base64.encode64(ciphertext).chomp, Base64.encode64(iv).chomp, start
     end
     
@@ -61,11 +67,15 @@ module ActsAsEncrypted
       else
         key, start = @keystore.get_current_key(family)
       end
-      cipher = get_cipher
-      cipher.decrypt(key)
-      cipher.iv = Base64.decode64(iv)
-      plaintext = cipher.update(Base64.decode64(ciphertext))
-      plaintext << cipher.final
+      begin
+        cipher = get_cipher
+        cipher.decrypt(key)
+        cipher.iv = Base64.decode64(iv)
+        plaintext = cipher.update(Base64.decode64(ciphertext))
+        plaintext << cipher.final
+      rescue
+        raise CryptoFailureError.new
+      end
       return plaintext
     end
 
