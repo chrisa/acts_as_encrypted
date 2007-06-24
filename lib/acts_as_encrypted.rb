@@ -80,9 +80,11 @@ module ActsAsEncrypted
           plaintext = self[col]
           if self["#{f}_start"] && self["#{f}_start"] > 0
             # encrypt with same key as before if we have one
+            log_operation(col, "encrypt")
             self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, self["#{f}_start"], self[col])
           else
             # encrypt with current key
+            log_operation(col, "encrypt")
             self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
           end
           # save the plaintext
@@ -99,6 +101,7 @@ module ActsAsEncrypted
         else
           if self[col]
             # decrypt with specific key start stored in db
+            log_operation(col, "decrypt")
             self[col] = ActsAsEncrypted::Engine.engine.decrypt(f, self["#{f}_start"], self["#{col}_iv"], self[col])
             @decrypts[col] = self[col]
           end
@@ -112,6 +115,7 @@ module ActsAsEncrypted
       encrypts_cols.each do |col, f|
         if self[col]
           # encrypt with current key
+          log_operation(col, "encrypt")
           self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
         end
       end
@@ -121,6 +125,16 @@ module ActsAsEncrypted
     def after_find
       # engage after_find callback, see:
       # http://api.rubyonrails.org/classes/ActiveRecord/Callbacks.html
+    end
+
+    private 
+    def log_operation(column, op)
+      if ActiveRecord::Base.colorize_logging
+        message = "  \e[4;32;1m%s.%s %s\e[0m" % [self.class.to_s, column, op]
+      else
+        message = "%s.%s %s" % [self.class.to_s, column, op]
+      end
+      logger.info(message)
     end
   end
     
