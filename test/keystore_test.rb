@@ -55,6 +55,16 @@ class KeyStoreTest < Test::Unit::TestCase
     assert @ks.get_key('foo', t)
   end
 
+  def test_new_key_is_returned_by_get_current_key
+    @ks.create_family('foo')
+    t = Time.now.to_i
+    @ks.new_key('foo', t - 2)
+    k1 = @ks.get_current_key('foo')
+    @ks.new_key('foo', t - 1)
+    k2 = @ks.get_current_key('foo')
+    assert_not_equal k1, k2
+  end
+  
   def test_family_not_found
     begin
       @ks.get_key('foofamily', 0)

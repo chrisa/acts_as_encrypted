@@ -3,10 +3,6 @@ TODO for acts_as_encrypted
 
  * Performance
 
-    * We encrypt and decrypt too much, based on the callbacks set up
-      on ActiveRecord. Maybe make encryption / decryption a manual
-      process rather than always doing it?
-
     * Make auto-decrypt / encrypt configurable per column?
 
  * KeyTool
@@ -14,9 +10,6 @@ TODO for acts_as_encrypted
     * Pretty up output.
 
  * Tests
-
-    * keystore_test.rb should be testing get_current_key better -- 
-      the test missed the sort order being backwards.
 
     * ... 
  
