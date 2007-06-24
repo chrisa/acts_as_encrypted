@@ -100,7 +100,7 @@ module ActsAsEncrypted
           if self[col]
             # decrypt with specific key start stored in db
             self[col] = ActsAsEncrypted::Engine.engine.decrypt(f, self["#{f}_start"], self["#{col}_iv"], self[col])
-            # @decrypts[col] = self[col]
+            @decrypts[col] = self[col]
           end
         end
       end
