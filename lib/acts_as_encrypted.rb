@@ -2,12 +2,39 @@
 require 'acts_as_encrypted/engine'
 
 module ActsAsEncrypted
-
+  
+  class ConfigurationError < StandardError; end
+  
   def self.included(base)
     base.extend ActMacro
   end
 
   module ClassMethods
+    #Set up encryption on a column. Expects two extra columns 
+    #_to be present in the database: col_start and col_iv.
+    #_The specific key used is stored in the col_start column,
+    #_and the IV associated with the current ciphertext is 
+    #_stored in the col_iv column.
+    #
+    # == Override key family ==
+    #
+    #Use the :family key to override the key family for this 
+    #_column:
+    #
+    # encrypts :ccnum, :family => :ccnum
+    #
+    # == Leave some part of plaintext unencrypted ==
+    #
+    #All other keys will be interpreted as keys to parts of the
+    #_plaintext to leave unencrypted. The value for each should be
+    #_a Proc which given the plaintext returns the plaintext to 
+    #_be stored unencrypted in the column derived from the key:
+    # 
+    # encrypts :ccnum, :lastfour => lambda { |cc| cc[-4,4] }
+    #
+    #would leave the last four digits of :ccnum unencrypted in 
+    #_the column ccnum_lastfour.
+    #
     def encrypts(column, *opts)
       if opts = opts.shift
         # handle overridden key family
@@ -22,6 +49,12 @@ module ActsAsEncrypted
           if value.respond_to? :send
             unencrypted[column] = { 'column' => key, 'proc' => value }
           end
+        end
+      else
+        unless f = family
+          raise ConfigurationError.new("no key family defined for column #{column}")
+        else
+          encrypts_cols[column] = f
         end
       end
     end
@@ -53,7 +86,7 @@ module ActsAsEncrypted
             self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
           end
           # save the plaintext
-          # @decrypts[col] = plaintext
+          @decrypts[col] = plaintext
         end
       end
     end
@@ -101,6 +134,11 @@ module ActsAsEncrypted
   end
 
   module ActMacro
+    # acts_as_encrypted is the ActiveRecord model-class macro, which
+    # adds transparent data encryption to the model.
+    # 
+    # May be called with a symbol argument, which will be the default
+    # key family used for encryption.
     def acts_as_encrypted(family=nil)
       self.extend(ClassMethods)
       write_inheritable_attribute :family, family
