@@ -9,6 +9,10 @@ module ActsAsEncrypted
   class CryptoFailureError < StandardError; end
 
   class Engine
+    
+    # Sets the engine class. Possible values are 'local' for an engine
+    # which directly loads and decrypts the keystore, or 'remote' for
+    # an engine which contacts a remote encryption daemon over drbssl.
     def self.engine=(engine)
       if (engine == 'local')
         @@engine_class = ActsAsEncrypted::Engine::Local
@@ -19,14 +23,18 @@ module ActsAsEncrypted
       end
     end
 
+    # Sets the configuration hash for the Engine.
     def self.config=(config)
       @@config = config
     end
     
+    # Returns an instance of the engine.
     def self.engine
       @@engine ||= @@engine_class.new(@@config)
     end
 
+    # Causes the next call to engine to return a newly-loaded engine,
+    # which will re-read the keystore.
     def self.reload
       @@engine = nil
     end
@@ -39,10 +47,15 @@ module ActsAsEncrypted
       @keystore = ActsAsEncrypted::Keystore.new(config)
     end
 
-    def get_cipher
-      OpenSSL::Cipher::Cipher.new('AES-256-CBC')      
-    end
-
+    # The encryption method. Encrypts the given plaintext with a key
+    # from the given family, either the current key if start is nil,
+    # or the key specified as start. 
+    # 
+    # Returns the ciphertext and IV as base64 encoded strings, and the
+    # key used, whether it was specified or selected as the current
+    # key.
+    # 
+    # Can raise a CryptoFailureError, in case of failed encryption.
     def encrypt(family, start, plaintext)
       if start 
         key = @keystore.get_key(family, start)
@@ -61,6 +74,11 @@ module ActsAsEncrypted
       return Base64.encode64(ciphertext).chomp, Base64.encode64(iv).chomp, start
     end
     
+    # The decryption method. Decrypts the given ciphertext (as a
+    # base64 encoded string) with the specified key family and start,
+    # using the specified IV (also base64 encoded string).
+    #
+    # Returns the plaintext, or raises a CryptoFailureError.
     def decrypt(family, start, iv, ciphertext)
       if start 
         key = @keystore.get_key(family, start)
@@ -77,6 +95,13 @@ module ActsAsEncrypted
         raise CryptoFailureError.new
       end
       return plaintext
+    end
+
+    private 
+    # Returns the cipher to be used for encryption and decryption of
+    # model data.
+    def get_cipher
+      OpenSSL::Cipher::Cipher.new('AES-256-CBC')      
     end
 
   end

@@ -6,6 +6,8 @@ module ActsAsEncrypted
 
   class Keystore
 
+    # Loads the keystore, or if the config parameter :initializing is
+    # provided, creates and saves a new keystore file.
     def initialize(config)
       @config = config
       if @config[:initializing]
@@ -16,6 +18,8 @@ module ActsAsEncrypted
       end
     end
 
+    # Returns the most recent key that isn't dated in the future for
+    # the given key family.
     def get_current_key(family)
       unless @ks[:family]
         raise KeyNotFoundError.new("empty keystore?")
@@ -34,6 +38,7 @@ module ActsAsEncrypted
       return @ks[:family][family.to_s][start], start
     end
 
+    # Returns a specific key for the specified family, by date.
     def get_key(family, start)
       unless @ks[:family]
         raise KeyNotFoundError.new("empty keystore?")
@@ -48,36 +53,44 @@ module ActsAsEncrypted
       return @ks[:family][family.to_s][start]
     end
 
+    # Yields the name of each family.
     def each_family
       @ks[:family].each do |k,v|
         yield k
       end
     end
 
+    # Returns a list of names of known key families.
     def families
       @ks[:family].keys
     end
 
+    # Returns a list of ids (==date) for each key in the given 
+    # family.
     def keys(family)
       @ks[:family][family].keys
     end
 
+    # Yields each key in the given family.
     def each_key(family)
       @ks[:family][family].keys.each do |k|
         yield k
       end
     end
-
+    
+    # Creates a new key in the given family, with the date specified.
     def new_key(f, start)
       start = start.to_i
       k = OpenSSL::Random.random_bytes(32)
       @ks[:family][f][start] = k
     end
-
+    
+    # Creates a new empty family of keys.
     def create_family(f)
       @ks[:family][f] = Hash.new
     end
 
+    # Initialises and saves a new empty keystore. 
     def init_keystore
       @ks = Hash.new
       @ks[:serial] = 0
@@ -85,7 +98,8 @@ module ActsAsEncrypted
       @kek = OpenSSL::Random.random_bytes(32)
       save
     end
-
+    
+    # Encrypts and saves the current keystore.
     def save
       # set up a cipher to encrypt the keystore
       cipher = get_cipher
@@ -114,6 +128,8 @@ module ActsAsEncrypted
       end
     end
 
+    # Loads and decrypts the keystore file specified in the current
+    # config hash :filename.
     def load
       # read the keystore file and extract the parts
       file = File.read(@config[:filename])
@@ -138,6 +154,8 @@ module ActsAsEncrypted
     end
 
     private
+    # Returns the cipher to be used to encrypt and decrypt the
+    # keystore.
     def get_cipher
       OpenSSL::Cipher::Cipher.new('AES-256-CBC')
     end
