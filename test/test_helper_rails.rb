@@ -27,3 +27,16 @@ end
 class RawCreditcard < ActiveRecord::Base
   set_table_name :creditcards
 end
+
+# For testing incorrectly-used acts_as_encrypted macro
+# no key family at all:
+class NoKeyFamily < ActiveRecord::Base
+  set_table_name :creditcards
+  acts_as_encrypted
+end
+# default key family only:
+class DefaultKeyFamily < ActiveRecord::Base
+  set_table_name :creditcards
+  acts_as_encrypted :ccnum
+  encrypts :ccnum
+end

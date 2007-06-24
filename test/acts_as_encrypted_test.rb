@@ -72,6 +72,31 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     assert_equal ccnum, fc.ccnum
     assert_equal name, fc.cardholder
   end
+  
+  def test_no_key_family
+    # run "encrypts :ccnum" in the context of NoKeyFamily
+    # to trigger the configuration error.
+    begin
+      NoKeyFamily.class_eval do 
+        encrypts :ccnum
+      end
+    rescue => e
+      assert_equal ActsAsEncrypted::ConfigurationError, e.class
+    else
+      assert nil, "no exception raised"
+    end
+  end
+
+  def test_default_key_only
+    default = DefaultKeyFamily.new
+    default.ccnum = '0000000000000000'
+    assert default.save
+    assert_equal default.ccnum, '0000000000000000'
+
+    rc = RawCreditcard.find(default.id)
+    assert rc
+    assert_not_equal rc.ccnum, default.ccnum
+  end
 
   def test_tainting
     c = Creditcard.new
