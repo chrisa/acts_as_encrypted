@@ -126,15 +126,17 @@ module ActsAsEncrypted
       @ks = Hash.new
       @ks[:serial] = 0
       @ks[:family] = Hash.new
-      @kek = OpenSSL::Random.random_bytes(32)
       save
     end
     
     # Encrypts and saves the current keystore.
     def save
+      # get a new KEK
+      kek = OpenSSL::Random.random_bytes(32)
+      
       # set up a cipher to encrypt the keystore
       cipher = get_cipher
-      cipher.encrypt(@kek)
+      cipher.encrypt(kek)
       iv = cipher.random_iv
 
       # dump the keystore and pad it with a random length
@@ -149,7 +151,7 @@ module ActsAsEncrypted
 
       # encrypt the KEK
       public_rsa = @config[:SSLPrivateKey].public_key
-      encrypted_key = public_rsa.public_encrypt(@kek)
+      encrypted_key = public_rsa.public_encrypt(kek)
 
       # write out the encrypted KEK, the IV and the ciphertext
       File.open(@config[:filename],  "w") do |fp| 
@@ -169,11 +171,11 @@ module ActsAsEncrypted
       ciphertext    = file[144, file.length - 144]
       
       # decrypt the KEK
-      @kek = @config[:SSLPrivateKey].private_decrypt(encrypted_key)
+      kek = @config[:SSLPrivateKey].private_decrypt(encrypted_key)
       
       # decrypt the keystore with the KEK and IV
       cipher = get_cipher
-      cipher.decrypt(@kek)
+      cipher.decrypt(kek)
       cipher.iv = iv
       ksdata = cipher.update(ciphertext)
       ksdata << cipher.final
