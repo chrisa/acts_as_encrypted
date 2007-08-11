@@ -20,6 +20,7 @@ require 'acts_as_encrypted/options'
 
 class Keytool < Cmd
   
+  doc :list_families, "List the key families in the keystore."
   def do_list_families
     if @ks.families.length
       @ks.each_family do |f|
@@ -30,10 +31,12 @@ class Keytool < Cmd
     end
   end
 
+  doc :create_family, "Create a new family."
   def do_create_family(family)
     @ks.create_family(family)
   end
   
+  doc :new_key, "Create a new key in the specified family."
   def do_new_key(family)
     f = @ks.family(family)
     if f
@@ -43,6 +46,7 @@ class Keytool < Cmd
     end
   end
 
+  doc :list_keys, "List the keys in the specified family."
   def do_list_keys(family)
     f = @ks.family(family)
     if f
@@ -58,6 +62,7 @@ class Keytool < Cmd
     end
   end
     
+  doc :list_all_keys, "List all the keys in the keystore."
   def do_list_all_keys
     if @ks.families.length
       @ks.each_family do |family|
@@ -77,6 +82,7 @@ class Keytool < Cmd
 
   end
 
+  doc :save, "Write the current state of the keystore to disk."
   def do_save
     @ks.save
   end
