@@ -4,6 +4,30 @@ module ActsAsEncrypted
 
   class KeyNotFoundError < StandardError; end
 
+  class KeyFamily
+    def initialize(keystore, family)
+      @keystore = keystore
+      @family = family
+    end
+
+    # Returns a list of ids (==date) for each key 
+    def key_ids
+      @keystore.family_get_keys(@family).sort
+    end
+
+    # Yields each key in the given family.
+    def each_key
+      key_ids.each do |k|
+        yield k
+      end
+    end
+    
+    # Creates a new key in the given family, with the date specified.
+    def new_key(start)
+      @keystore.family_new_key(@family, start)
+    end
+  end
+
   class Keystore
 
     # Loads the keystore, or if the config parameter :initializing is
@@ -17,6 +41,8 @@ module ActsAsEncrypted
         load
       end
     end
+
+    # PUBLIC "get a key" API
 
     # Returns the most recent key that isn't dated in the future for
     # the given key family.
@@ -53,10 +79,19 @@ module ActsAsEncrypted
       return @ks[:family][family.to_s][start]
     end
 
+    # PUBLIC "key families" API
+    
     # Yields the name of each family.
     def each_family
       @ks[:family].each do |k,v|
         yield k
+      end
+    end
+
+    # Returns a KeyFamily object for the given family.
+    def family(f)
+      if @ks[:family][f]
+        return KeyFamily.new(self, f)
       end
     end
 
@@ -65,31 +100,27 @@ module ActsAsEncrypted
       @ks[:family].keys
     end
 
-    # Returns a list of ids (==date) for each key in the given 
-    # family.
-    def keys(family)
-      @ks[:family][family].keys
-    end
-
-    # Yields each key in the given family.
-    def each_key(family)
-      @ks[:family][family].keys.each do |k|
-        yield k
-      end
-    end
-    
-    # Creates a new key in the given family, with the date specified.
-    def new_key(f, start)
-      start = start.to_i
-      k = OpenSSL::Random.random_bytes(32)
-      @ks[:family][f][start] = k
-    end
-    
     # Creates a new empty family of keys.
     def create_family(f)
       @ks[:family][f] = Hash.new
     end
 
+    # CALLED BY KeyFamily OBJECTS
+
+    # Creates a new key in the given family, with the date specified.
+    def family_new_key(f, start)
+      start = start.to_i
+      k = OpenSSL::Random.random_bytes(32)
+      @ks[:family][f][start] = k
+    end
+
+    # Returns the key ids in the given family.
+    def family_get_keys(f)
+      @ks[:family][f].keys
+    end
+
+    # FILE HANDLING
+    
     # Initialises and saves a new empty keystore. 
     def init_keystore
       @ks = Hash.new

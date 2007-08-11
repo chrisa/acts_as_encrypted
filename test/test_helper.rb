@@ -1,7 +1,9 @@
 $:.push File.expand_path(File.dirname(__FILE__) + "/../lib")
 
 require 'test/unit'
-load '/usr/local/bin/QuickCert'
+['/opt/local', '/usr/local'].each do |path|
+  break if load "#{path}/bin/QuickCert"
+end
 
 CA = {}
 CERTS = []

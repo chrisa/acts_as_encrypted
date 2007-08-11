@@ -17,9 +17,11 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     }
     @ks = ActsAsEncrypted::Keystore.new(config)
     @ks.create_family('ccnum')
-    @ks.new_key('ccnum', Time.now)
+    f = @ks.family('ccnum')
+    f.new_key(1)
     @ks.create_family('name')
-    @ks.new_key('name', Time.now)
+    f = @ks.family('name')
+    f.new_key(1)
     @ks.save
 
     config.delete(:initializing)
@@ -27,12 +29,12 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     ActsAsEncrypted::Engine.config = config
     ActsAsEncrypted::Engine.reload
     
-    server_bin = File.expand_path(File.dirname(__FILE__) + "/../bin/server.rb")
+    server_bin = File.expand_path(File.dirname(__FILE__) + "/../bin/encryption_server.rb")
     `#{server_bin} start`
   end
     
   def teardown
-    server_bin = File.expand_path(File.dirname(__FILE__) + "/../bin/server.rb")
+    server_bin = File.expand_path(File.dirname(__FILE__) + "/../bin/encryption_server.rb")
     `#{server_bin} stop`    
   end
 
@@ -163,8 +165,10 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     c.cardholder = name
     assert c.save
     
-    @ks.new_key('ccnum', Time.now.to_i + 1)
-    @ks.new_key('name', Time.now.to_i + 1)
+    f = @ks.family('ccnum')
+    f.new_key(Time.now.to_i + 1)
+    f = @ks.family('name')
+    f.new_key(Time.now.to_i + 1)
     @ks.save
     ActsAsEncrypted::Engine.reload
     

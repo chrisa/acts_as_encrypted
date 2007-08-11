@@ -17,9 +17,11 @@ class EngineTest < Test::Unit::TestCase
     }
     @ks = ActsAsEncrypted::Keystore.new(config)
     @ks.create_family('ccnum')
-    @ks.new_key('ccnum', 1)
+    f = @ks.family('ccnum')
+    f.new_key(1)
     @ks.create_family('name')
-    @ks.new_key('name', 1)
+    f = @ks.family('name')
+    f.new_key(1)
     @ks.save
 
     config.delete(:initializing)

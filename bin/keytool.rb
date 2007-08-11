@@ -1,10 +1,22 @@
 #!/usr/bin/env ruby
-
+require 'pathname'
 require 'rubygems'
 require 'openssl'
 require 'cmd'
-$:.push File.expand_path(File.dirname(__FILE__) + "/../lib")
+
+# allow running standalone or in a rails app
+script_dir = Pathname.new(File.dirname(__FILE__)).realpath
+rails_script = script_dir + '../vendor/plugins/acts_as_encrypted/bin'
+plugin_script = script_dir + '../../../../vendor/plugins/acts_as_encrypted/bin'
+if rails_script.directory?
+  rails_root = script_dir + '../'
+elsif plugin_script.directory?
+  rails_root = script_dir + '../../../..'
+end
+$LOAD_PATH << File.join(rails_root + 'vendor/plugins/acts_as_encrypted/lib')
+
 require 'acts_as_encrypted/keystore'
+require 'acts_as_encrypted/options'
 
 class Keytool < Cmd
   
@@ -23,26 +35,63 @@ class Keytool < Cmd
   end
   
   def do_new_key(family)
-    @ks.new_key(family, Time.now)
+    f = @ks.family(family)
+    if f
+      f.new_key(Time.now)
+    else
+      puts "family #{family} doesn't exist"
+    end
   end
 
   def do_list_keys(family)
-    if @ks.keys(family).length
-      @ks.each_key(family) do |k|
-        puts k
+    f = @ks.family(family)
+    if f
+      if f.key_ids.length > 0
+        f.each_key do |k|
+          puts k
+        end
+      else
+        puts "no keys for family #{family}"
       end
     else
-      puts "no keys for family #{family}"
+      puts "family #{family} doesn't exist"
     end
   end
     
+  def do_list_all_keys
+    if @ks.families.length
+      @ks.each_family do |family|
+        f = @ks.family(family)
+        puts family
+        if f.key_ids.length > 0
+          f.each_key do |key|
+            puts " #{key}"
+          end
+        else
+          puts " no keys for family #{family}"
+        end
+      end
+    else
+      puts "no key families defined"
+    end
+
+  end
+
   def do_save
     @ks.save
   end
 
   def setup
-    cryptoroot = File.expand_path(File.dirname(__FILE__) + "/../keys")
-    keystore = File.expand_path(File.dirname(__FILE__) + "/../keys/keystore")
+    # parse, then remove options from ARGV
+    options = ActsAsEncrypted::Options.parse(ARGV)
+    while ARGV.length > 0
+      ARGV.shift
+    end
+    
+    # initializing?
+    if options.initializing
+      puts "Initializing new keystore"
+    end
     
     # establish the hostname, use to find generated keys/certs
     full_hostname = `hostname`.strip
@@ -51,10 +100,11 @@ class Keytool < Cmd
     
     config = {
       :SSLVerifyMode        => OpenSSL::SSL::VERIFY_PEER | OpenSSL::SSL::VERIFY_FAIL_IF_NO_PEER_CERT,
-      :SSLPrivateKey        => OpenSSL::PKey::RSA.new(File.read("#{cryptoroot}/#{hostname}-server/#{hostname}-server_keypair.pem")),
-      :SSLCertificate       => OpenSSL::X509::Certificate.new(File.read("#{cryptoroot}/#{hostname}-server/cert_#{hostname}-server.pem")),
-      :SSLCACertificateFile => "#{cryptoroot}/CA/cacert.pem",
-      :filename             => keystore
+      :SSLPrivateKey        => OpenSSL::PKey::RSA.new(File.read("#{options.cryptoroot}/#{hostname}-server/#{hostname}-server_keypair.pem")),
+      :SSLCertificate       => OpenSSL::X509::Certificate.new(File.read("#{options.cryptoroot}/#{hostname}-server/cert_#{hostname}-server.pem")),
+      :SSLCACertificateFile => "#{options.cryptoroot}/CA/cacert.pem",
+      :filename             => options.keystore,
+      :initializing         => options.initializing
     }
     
     @ks = ActsAsEncrypted::Keystore.new(config)

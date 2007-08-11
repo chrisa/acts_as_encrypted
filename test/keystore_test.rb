@@ -24,9 +24,10 @@ class KeyStoreTest < Test::Unit::TestCase
 
   def test_many_keys_then_save_and_reload
     @ks.create_family('foo')
+    f = @ks.family('foo')
 
     (1..100).each do |i|
-      @ks.new_key('foo', Time.now.to_i + i)
+      f.new_key(Time.now.to_i + i)
     end
     
     @ks.save
@@ -35,7 +36,9 @@ class KeyStoreTest < Test::Unit::TestCase
     config.delete(:initializing)
     reloaded_ks = ActsAsEncrypted::Keystore.new(config)
     assert_equal 1, reloaded_ks.families.length
-    assert_equal 100, reloaded_ks.keys('foo').length
+    f = reloaded_ks.family('foo')
+    assert f
+    assert_equal 100, f.key_ids.length
   end
 
   def test_new_family
@@ -51,16 +54,18 @@ class KeyStoreTest < Test::Unit::TestCase
   def test_new_key
     @ks.create_family('foo')
     t = Time.now.to_i
-    @ks.new_key('foo', t)
+    f = @ks.family('foo')
+    f.new_key(t)
     assert @ks.get_key('foo', t)
   end
 
   def test_new_key_is_returned_by_get_current_key
     @ks.create_family('foo')
     t = Time.now.to_i
-    @ks.new_key('foo', t - 2)
+    f = @ks.family('foo')
+    f.new_key(t - 2)
     k1 = @ks.get_current_key('foo')
-    @ks.new_key('foo', t - 1)
+    f.new_key(t - 1)
     k2 = @ks.get_current_key('foo')
     assert_not_equal k1, k2
   end

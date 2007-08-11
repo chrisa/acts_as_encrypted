@@ -21,3 +21,12 @@ Quick start:
    $ cd $RAILS_ROOT
    $ rake test:plugins
  
+
+Use in an ActiveRecord model:
+
+  class Creditcard < ActiveRecord::Base
+    acts_as_encrypted :ccnum
+    encrypts :ccnum, :lastfour => lambda { |cc| cc[-4,4] }
+  end
+
+
