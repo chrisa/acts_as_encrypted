@@ -48,46 +48,48 @@ module ActsAsEncrypted
     end
 
     # The encryption method. Encrypts the given plaintext with a key
-    # from the given family, either the current key if start is nil,
-    # or the key specified as start. 
+    # from the given family, either the current key if keyid is nil,
+    # or the key specified as keyid. 
     # 
     # Returns the ciphertext and IV as base64 encoded strings, and the
     # key used, whether it was specified or selected as the current
     # key.
     # 
     # Can raise a CryptoFailureError, in case of failed encryption.
-    def encrypt(family, start, plaintext)
-      if start 
-        key = @keystore.get_key(family, start)
+    def encrypt(family, keyid, plaintext)
+      if keyid
+        key = @keystore.get_key(family, keyid)
       else
-        key, start = @keystore.get_current_key(family)
+        key = @keystore.get_live_key(family)
+        keyid = key.keyid
       end
       begin
         cipher = get_cipher
-        cipher.encrypt(key)
+        cipher.encrypt(key.key)
         iv = cipher.random_iv
         ciphertext = cipher.update(plaintext)
         ciphertext << cipher.final
       rescue
         raise CryptoFailureError.new
       end
-      return Base64.encode64(ciphertext).chomp, Base64.encode64(iv).chomp, start
+      return Base64.encode64(ciphertext).chomp, Base64.encode64(iv).chomp, keyid
     end
     
     # The decryption method. Decrypts the given ciphertext (as a
-    # base64 encoded string) with the specified key family and start,
+    # base64 encoded string) with the specified key family and keyid,
     # using the specified IV (also base64 encoded string).
     #
     # Returns the plaintext, or raises a CryptoFailureError.
-    def decrypt(family, start, iv, ciphertext)
-      if start 
-        key = @keystore.get_key(family, start)
+    def decrypt(family, keyid, iv, ciphertext)
+      if keyid
+        key = @keystore.get_key(family, keyid)
       else
-        key, start = @keystore.get_current_key(family)
+        key = @keystore.get_live_key(family)
+        keyid = key.keyid
       end
       begin
         cipher = get_cipher
-        cipher.decrypt(key)
+        cipher.decrypt(key.key)
         cipher.iv = Base64.decode64(iv)
         plaintext = cipher.update(Base64.decode64(ciphertext))
         plaintext << cipher.final
@@ -114,12 +116,12 @@ module ActsAsEncrypted
       @service = DRbObject.new nil, there
     end
 
-    def encrypt(family, start, plaintext)
-      @service.encrypt(family, start, plaintext)
+    def encrypt(family, keyid, plaintext)
+      @service.encrypt(family, keyid, plaintext)
     end
     
-    def decrypt(family, start, iv, ciphertext)
-      @service.decrypt(family, start, iv, ciphertext)
+    def decrypt(family, keyid, iv, ciphertext)
+      @service.decrypt(family, keyid, iv, ciphertext)
     end
 
   end

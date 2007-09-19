@@ -18,10 +18,10 @@ class EngineTest < Test::Unit::TestCase
     @ks = ActsAsEncrypted::Keystore.new(config)
     @ks.create_family('ccnum')
     f = @ks.family('ccnum')
-    f.new_key(1)
+    @ccnum_id = f.new_key(1)
     @ks.create_family('name')
     f = @ks.family('name')
-    f.new_key(1)
+    @name_id = f.new_key(1)
     @ks.save
 
     config.delete(:initializing)
@@ -37,23 +37,23 @@ class EngineTest < Test::Unit::TestCase
 
   def test_encrypt
     e = ActsAsEncrypted::Engine.engine
-    ciphertext, iv, start = e.encrypt('ccnum', nil, '0000000000000000')
+    ciphertext, iv, keyid = e.encrypt('ccnum', nil, '0000000000000000')
     assert ciphertext
     assert iv
-    assert_equal 1, start
+    assert_equal @ccnum_id, keyid
   end
 
   def test_decrypt
     e = ActsAsEncrypted::Engine.engine
-    ciphertext, iv, start = e.encrypt('ccnum', nil, '0000000000000000')
-    plaintext = e.decrypt('ccnum', 1, iv, ciphertext)
+    ciphertext, iv, keyid = e.encrypt('ccnum', nil, '0000000000000000')
+    plaintext = e.decrypt('ccnum', keyid, iv, ciphertext)
     assert_equal '0000000000000000', plaintext
   end
 
   def test_no_iv_decrypt
     e = ActsAsEncrypted::Engine.engine
     begin
-      plaintext = e.decrypt('ccnum', 1, nil, "GUoLmQdOjmYDk9y7/KTJZ+Z3CpPVuFZCay1OyEZWExE=")
+      plaintext = e.decrypt('ccnum', @ccnum_id, nil, "GUoLmQdOjmYDk9y7/KTJZ+Z3CpPVuFZCay1OyEZWExE=")
     rescue => e
       assert_equal ActsAsEncrypted::CryptoFailureError, e.class
     else
@@ -64,7 +64,7 @@ class EngineTest < Test::Unit::TestCase
   def test_wrong_iv_decrypt
     e = ActsAsEncrypted::Engine.engine
     begin
-      plaintext = e.decrypt('ccnum', 1, "lxlsQxW/yU/cKITgoN9EXA==", "GUoLmQdOjmYDk9y7/KTJZ+Z3CpPVuFZCay1OyEZWExE=")
+      plaintext = e.decrypt('ccnum', @ccnum_id, "lxlsQxW/yU/cKITgoN9EXA==", "GUoLmQdOjmYDk9y7/KTJZ+Z3CpPVuFZCay1OyEZWExE=")
     rescue => e
       assert_equal ActsAsEncrypted::CryptoFailureError, e.class
     else
@@ -74,7 +74,7 @@ class EngineTest < Test::Unit::TestCase
 
   def test_key_not_found_decrypt
     e = ActsAsEncrypted::Engine.engine
-    ciphertext, iv, start = e.encrypt('ccnum', nil, '0000000000000000')
+    ciphertext, iv, keyid = e.encrypt('ccnum', nil, '0000000000000000')
     begin
       plaintext = e.decrypt('ccnum', 2, iv, ciphertext)
     rescue => e

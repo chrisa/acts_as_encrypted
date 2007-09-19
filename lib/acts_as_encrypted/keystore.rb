@@ -3,28 +3,103 @@ require 'openssl'
 module ActsAsEncrypted
 
   class KeyNotFoundError < StandardError; end
+  class KeyFamilyNotFoundError < StandardError; end
+  class InvalidKeyStatusError < StandardError; end
+
+  class Key
+    attr_reader :status, :key, :keyid, :start
+
+    ValidStatus = [ 
+                   :terminated,
+                   :retired,
+                   :active,
+                   :pending,
+                   :expired,
+                   :live,
+                  ]
+
+    def initialize(start)
+      @start = start
+
+      # hex-formatted 4 byte random key keyid.
+      @keyid = sprintf('%x', OpenSSL::Random.random_bytes(4).unpack('L').first)
+
+      # all keys start at :active
+      @status = :active
+
+      # the key material itself
+      @key = OpenSSL::Random.random_bytes(32)
+    end
+    
+    # TODO - enforce state machine
+    def status=(status)
+      if ValidStatus.include(status)
+        @status = status
+      else
+        raise InvalidKeyStatus.new("invalid key status: #{status.to_s}")
+      end
+    end
+    
+    def to_s
+      "<id #{keyid} start #{start}>"
+    end
+  end
 
   class KeyFamily
-    def initialize(keystore, family)
-      @keystore = keystore
-      @family = family
+    def initialize(name)
+      @name = name
+      @keys = Hash.new
     end
 
-    # Returns a list of ids (==date) for each key 
+    # Returns a list of keyids (==date) for each key 
     def key_ids
-      @keystore.family_get_keys(@family).sort
+      @keys.keys
     end
 
     # Yields each key in the given family.
     def each_key
-      key_ids.each do |k|
+      @keys.values.each do |k|
         yield k
       end
     end
-    
+
     # Creates a new key in the given family, with the date specified.
     def new_key(start)
-      @keystore.family_new_key(@family, start)
+      start = start.to_i
+      key = Key.new(start)
+      @keys[key.keyid] = key
+      key.keyid
+    end
+
+    def get_live_key
+      # select non-expired keys...
+      valid = @keys.values.select do |k|
+        k.start <= Time.now.to_i
+      end
+      
+      # sort by start...
+      keyid = valid.sort {|a,b| a.start <=> b.start }.last.keyid
+        
+      # check existence
+      unless keyid && @keys[keyid]
+        raise KeyNotFoundError.new("no valid key in family #{@name}")
+      end
+
+      return @keys[keyid]
+    end
+    
+    def get_key(keyid)
+      # check existence
+      unless keyid && @keys[keyid]
+        raise KeyNotFoundError.new("no key #{keyid} in family #{@name}")
+      end
+
+      # check status
+      unless @keys[keyid].status == :active
+        raise KeyNotFoundError.new("key #{keyid} not in active status")
+      end
+
+      return @keys[keyid]      
     end
   end
 
@@ -42,41 +117,33 @@ module ActsAsEncrypted
       end
     end
 
-    # PUBLIC "get a key" API
+    # PUBLIC "get a live key" API
 
-    # Returns the most recent key that isn't dated in the future for
-    # the given key family.
-    def get_current_key(family)
+    # Returns the most recent key that isn't dated in the future and
+    # is marked :active, for the given key family.
+    def get_live_key(family)
       unless @ks[:family]
         raise KeyNotFoundError.new("empty keystore?")
       end
       unless @ks[:family][family.to_s]
         raise KeyNotFoundError.new("no family #{family}")
       end
-      valid = @ks[:family][family.to_s].keys.select do |t|
-        t <= Time.now.to_i
-      end
-      start = valid.sort.last
-      unless start && @ks[:family][family.to_s][start]
-        raise KeyNotFoundError.new("no valid key in family #{family}")
-      end
 
-      return @ks[:family][family.to_s][start], start
+      f = @ks[:family][family.to_s]
+      return f.get_live_key
     end
 
     # Returns a specific key for the specified family, by date.
-    def get_key(family, start)
+    def get_key(family, keyid)
       unless @ks[:family]
         raise KeyNotFoundError.new("empty keystore?")
       end
       unless @ks[:family][family.to_s]
         raise KeyNotFoundError.new("no family #{family}")
       end
-      unless @ks[:family][family.to_s][start]
-        raise KeyNotFoundError.new("no key #{start} in family #{family}")
-      end
 
-      return @ks[:family][family.to_s][start]
+      f = @ks[:family][family.to_s]
+      return f.get_key(keyid)
     end
 
     # PUBLIC "key families" API
@@ -90,9 +157,10 @@ module ActsAsEncrypted
 
     # Returns a KeyFamily object for the given family.
     def family(f)
-      if @ks[:family][f]
-        return KeyFamily.new(self, f)
+      unless @ks[:family][f]
+        raise KeyFamilyNotFoundError.new("no key family #{f}")
       end
+      return @ks[:family][f]
     end
 
     # Returns a list of names of known key families.
@@ -102,21 +170,7 @@ module ActsAsEncrypted
 
     # Creates a new empty family of keys.
     def create_family(f)
-      @ks[:family][f] = Hash.new
-    end
-
-    # CALLED BY KeyFamily OBJECTS
-
-    # Creates a new key in the given family, with the date specified.
-    def family_new_key(f, start)
-      start = start.to_i
-      k = OpenSSL::Random.random_bytes(32)
-      @ks[:family][f][start] = k
-    end
-
-    # Returns the key ids in the given family.
-    def family_get_keys(f)
-      @ks[:family][f].keys
+      @ks[:family][f] = KeyFamily.new(f)
     end
 
     # FILE HANDLING

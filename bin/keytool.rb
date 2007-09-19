@@ -52,7 +52,7 @@ class Keytool < Cmd
     if f
       if f.key_ids.length > 0
         f.each_key do |k|
-          puts k
+          puts k.to_s
         end
       else
         puts "no keys for family #{family}"
@@ -70,7 +70,7 @@ class Keytool < Cmd
         puts family
         if f.key_ids.length > 0
           f.each_key do |key|
-            puts " #{key}"
+            puts " #{key.to_s}"
           end
         else
           puts " no keys for family #{family}"

@@ -9,6 +9,11 @@ class KeyStoreTest < Test::Unit::TestCase
     @ks = ActsAsEncrypted::Keystore.new(config)
   end
 
+  def test_key_create
+    key = ActsAsEncrypted::Key.new(Time.now.to_i)
+    assert key
+  end
+
   def test_init_keystore 
     assert @ks
   end
@@ -55,18 +60,18 @@ class KeyStoreTest < Test::Unit::TestCase
     @ks.create_family('foo')
     t = Time.now.to_i
     f = @ks.family('foo')
-    f.new_key(t)
-    assert @ks.get_key('foo', t)
+    id = f.new_key(t)
+    assert @ks.get_key('foo', id)
   end
 
-  def test_new_key_is_returned_by_get_current_key
+  def test_new_key_is_returned_by_get_live_key
     @ks.create_family('foo')
     t = Time.now.to_i
     f = @ks.family('foo')
     f.new_key(t - 2)
-    k1 = @ks.get_current_key('foo')
+    k1 = @ks.get_live_key('foo')
     f.new_key(t - 1)
-    k2 = @ks.get_current_key('foo')
+    k2 = @ks.get_live_key('foo')
     assert_not_equal k1, k2
   end
   
@@ -83,7 +88,7 @@ class KeyStoreTest < Test::Unit::TestCase
   def test_key_not_found
     @ks.create_family('foo')
     begin
-      @ks.get_key('foo', 0)
+      @ks.get_key('foo', 'abc123')
     rescue => e
       assert_equal ActsAsEncrypted::KeyNotFoundError, e.class
     else

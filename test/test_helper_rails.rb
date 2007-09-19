@@ -11,8 +11,8 @@ ActiveRecord::Schema.define(:version => 1) do
     t.column :ccnum_iv, :string
     t.column :ccnum_lastfour, :string
 
-    t.column :ccnum_start, :integer
-    t.column :name_start, :integer
+    t.column :ccnum_keyid, :string
+    t.column :name_keyid, :string
   end
 end
 

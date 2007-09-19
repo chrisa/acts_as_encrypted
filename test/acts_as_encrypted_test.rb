@@ -18,10 +18,10 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     @ks = ActsAsEncrypted::Keystore.new(config)
     @ks.create_family('ccnum')
     f = @ks.family('ccnum')
-    f.new_key(1)
+    @ccnum_id = f.new_key(1)
     @ks.create_family('name')
     f = @ks.family('name')
-    f.new_key(1)
+    @name_id = f.new_key(1)
     @ks.save
 
     config.delete(:initializing)
@@ -66,8 +66,8 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     assert_equal rc.cardholder_initial, c.cardholder_initial
     assert_not_equal rc.ccnum, c.ccnum
     assert_not_equal rc.cardholder, c.cardholder
-    assert_not_nil rc.ccnum_start
-    assert_not_nil rc.name_start
+    assert_not_nil rc.ccnum_keyid
+    assert_not_nil rc.name_keyid
 
     # reload from scratch
     fc = Creditcard.find(c.id)

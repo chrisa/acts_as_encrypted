@@ -11,8 +11,8 @@ module ActsAsEncrypted
 
   module ClassMethods
     #Set up encryption on a column. Expects two extra columns 
-    #_to be present in the database: col_start and col_iv.
-    #_The specific key used is stored in the col_start column,
+    #_to be present in the database: col_keyid and col_iv.
+    #_The specific key used is stored in the col_keyid column,
     #_and the IV associated with the current ciphertext is 
     #_stored in the col_iv column.
     #
@@ -78,14 +78,14 @@ module ActsAsEncrypted
         if self[col]
           # keep a copy of the plaintext to avoid tainting
           plaintext = self[col]
-          if self["#{f}_start"] && self["#{f}_start"] > 0
+          if self["#{f}_keyid"]
             # encrypt with same key as before if we have one
             log_operation(col, "encrypt")
-            self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, self["#{f}_start"], self[col])
+            self[col], self["#{col}_iv"], self["#{f}_keyid"] = ActsAsEncrypted::Engine.engine.encrypt(f, self["#{f}_keyid"], self[col])
           else
             # encrypt with current key
             log_operation(col, "encrypt")
-            self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
+            self[col], self["#{col}_iv"], self["#{f}_keyid"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
           end
           # save the plaintext
           @decrypts[col] = plaintext
@@ -100,9 +100,9 @@ module ActsAsEncrypted
           self[col] = @decrypts[col]
         else
           if self[col]
-            # decrypt with specific key start stored in db
+            # decrypt with specific keyid stored in db
             log_operation(col, "decrypt")
-            self[col] = ActsAsEncrypted::Engine.engine.decrypt(f, self["#{f}_start"], self["#{col}_iv"], self[col])
+            self[col] = ActsAsEncrypted::Engine.engine.decrypt(f, self["#{f}_keyid"], self["#{col}_iv"], self[col])
             @decrypts[col] = self[col]
           end
         end
@@ -116,7 +116,7 @@ module ActsAsEncrypted
         if self[col]
           # encrypt with current key
           log_operation(col, "encrypt")
-          self[col], self["#{col}_iv"], self["#{f}_start"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
+          self[col], self["#{col}_iv"], self["#{f}_keyid"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
         end
       end
       decrypt
