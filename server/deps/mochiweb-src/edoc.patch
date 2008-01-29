@@ -1,0 +1,53 @@
+=== modified file 'lib/edoc/src/edoc_data.erl'
+--- lib/edoc/src/edoc_data.erl	2007-05-01 01:57:50 +0000
++++ lib/edoc/src/edoc_data.erl	2007-05-01 03:00:05 +0000
+@@ -73,9 +73,28 @@
+ %% NEW-OPTIONS: private, hidden, todo
+ %% DEFER-OPTIONS: edoc_extract:source/4
+ 
+-module(Module, Entries, Env, Opts) ->
+-    Name = atom_to_list(Module#module.name),
+-    HeaderEntry = get_entry(module, Entries),
++module(Module, Entries0, Env, Opts) ->
++    HeaderEntry = get_entry(module, Entries0),
++    {Name, Entries} = case Module#module.name of
++			  {ModuleName, Vars} ->
++			      ModVars = [atom_to_list(A) || A <- Vars],
++			      Spec = lists:foldr(fun (L, []) ->
++							 [L];
++						     (L, Acc) ->
++							 [L, ", " | Acc]
++						 end, [], ModVars),
++			      MSpec = io_lib:format("~s(~s)",
++						    [ModuleName, Spec]),
++			      New = #entry{name={new, length(Vars)},
++					   args=Vars,
++					   export=true,
++					   line=HeaderEntry#entry.line,
++					   data=[]},
++			      Entries1 = [New | Entries0],
++			      {lists:flatten(MSpec), Entries1};
++			  ModuleName ->
++			      {atom_to_list(ModuleName), Entries0}
++		      end,
+     HeaderTags = HeaderEntry#entry.data,
+     AllTags = get_all_tags(Entries),
+     Functions = function_filter(Entries, Opts),
+
+=== modified file 'lib/edoc/src/edoc_extract.erl'
+--- lib/edoc/src/edoc_extract.erl	2007-05-01 01:57:50 +0000
++++ lib/edoc/src/edoc_extract.erl	2007-05-01 02:24:01 +0000
+@@ -120,7 +120,12 @@
+     File = edoc_lib:filename(File0),
+     Module = get_module_info(Tree, File),
+     {Header, Footer, Entries} = collect(Forms, Module),
+-    Name = Module#module.name,
++    Name = case Module#module.name of
++	       {ModuleName, Vars} ->
++		   ModuleName;
++	       ModuleName ->
++		   ModuleName
++	   end,
+     Package = list_to_atom(packages:strip_last(Name)),
+     Env1 = Env#env{module = Name,
+ 		   package = Package,
