@@ -78,14 +78,14 @@ module ActsAsEncrypted
         if self[col]
           # keep a copy of the plaintext to avoid tainting
           plaintext = self[col]
-          if self["#{f}_keyid"]
-            # encrypt with same key as before if we have one
-            log_operation(col, "encrypt")
+          keyid = self["#{f}_keyid"]
+          begin
             self[col], self["#{col}_iv"], self["#{f}_keyid"] = ActsAsEncrypted::Engine.engine.encrypt(f, self["#{f}_keyid"], self[col])
-          else
-            # encrypt with current key
-            log_operation(col, "encrypt")
-            self[col], self["#{col}_iv"], self["#{f}_keyid"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
+            log_operation(col, "encrypt", :info)
+          rescue CryptoFailureError => e
+            log_operation(col, "encrypt failure: #{e.message}", :error)
+            self.errors.add(col, "encryption failure")
+            return nil
           end
           # save the plaintext
           @decrypts[col] = plaintext
@@ -101,9 +101,15 @@ module ActsAsEncrypted
         else
           if self[col]
             # decrypt with specific keyid stored in db
-            log_operation(col, "decrypt")
-            self[col] = ActsAsEncrypted::Engine.engine.decrypt(f, self["#{f}_keyid"], self["#{col}_iv"], self[col])
-            @decrypts[col] = self[col]
+            begin
+              self[col] = ActsAsEncrypted::Engine.engine.decrypt(f, self["#{f}_keyid"], self["#{col}_iv"], self[col])
+              log_operation(col, "decrypt", :info)
+              @decrypts[col] = self[col]
+            rescue CryptoFailureError => e
+              log_operation(col, "decrypt failure: #{e.message}", :error)
+              self[col] = nil
+              @decrypts[col] = nil
+            end
           end
         end
       end
@@ -115,11 +121,21 @@ module ActsAsEncrypted
       encrypts_cols.each do |col, f|
         if self[col]
           # encrypt with current key
-          log_operation(col, "encrypt")
-          self[col], self["#{col}_iv"], self["#{f}_keyid"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
+          begin
+            self[col], self["#{col}_iv"], self["#{f}_keyid"] = ActsAsEncrypted::Engine.engine.encrypt(f, nil, self[col])
+            log_operation(col, "reencrypt", :info)
+          rescue CryptoFailureError => e
+            log_operation(col, "reencrypt failure: #{e.message}", :error) 
+            self.errors.add(col, "reencryption failure")
+            return nil
+          end
         end
       end
       decrypt
+    end
+
+    def validate
+      encrypt
     end
 
     def after_find
@@ -128,13 +144,14 @@ module ActsAsEncrypted
     end
 
     private 
-    def log_operation(column, op)
+    def log_operation(column, op, sev=:info)
+      id = (self.id.nil?) ? 'new' : self.id.to_s
       if ActiveRecord::Base.colorize_logging
-        message = "  \e[4;32;1m%s.%s %s\e[0m" % [self.class.to_s, column, op]
+        message = "  \e[4;32;1m%s(%s).%s %s\e[0m" % [self.class.to_s, id, column, op]
       else
-        message = "%s.%s %s" % [self.class.to_s, column, op]
+        message = "%s(%s).%s %s" % [self.class.to_s, id, column, op]
       end
-      logger.info(message)
+      logger.send(sev, message)
     end
   end
     
@@ -159,10 +176,8 @@ module ActsAsEncrypted
       class_inheritable_reader :family
       self.send(:include, ActsAsEncrypted::InstanceMethods)
 
-      before_save      :encrypt
-      after_save       :decrypt
-      after_initialize :decrypt
-      after_find       :decrypt
+      after_initialize  :decrypt
+      after_find        :decrypt
 
       write_inheritable_attribute :encrypts_cols, Hash.new
       write_inheritable_attribute :unencrypted, Hash.new
