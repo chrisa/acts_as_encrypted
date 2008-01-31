@@ -50,5 +50,9 @@ init([]) ->
 	   {encserver_web, start, [WebConfig]},
 	   permanent, 5000, worker, dynamic},
 
-    Processes = [Web],
+    KeySrv = {encserver_keysrv,
+	      {encserver_keysrv, start, []},
+	      permanent, 5000, worker, dynamic},
+
+    Processes = [Web, KeySrv],
     {ok, {{one_for_one, 10, 10}, Processes}}.

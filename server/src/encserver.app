@@ -6,9 +6,10 @@
     encserver_app,
     encserver_sup,
     encserver_web,
-    encserver_deps
+    encserver_deps,
+    encserver_keysrv
   ]},
-  {registered, []},
+  {registered, [keysrv]},
   {mod, {encserver_app, []}},
   {env, []},
   {applications, [kernel, stdlib, crypto]}]}.

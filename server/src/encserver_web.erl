@@ -44,9 +44,8 @@ get_option(Option, Options) ->
     {proplists:get_value(Option, Options), proplists:delete(Option, Options)}.
 
 crypto_op(Op, Req) ->
-    Key = <<"abcdabcdabcdabcdabcdabcdabcdabcd">>,
-
     { struct, Struct } = mochijson2:decode(Req:recv_body()),
+
     case Op of
 
 	encrypt ->
@@ -56,7 +55,9 @@ crypto_op(Op, Req) ->
 	     { <<"keyid">>,     KeyId },
 	     { <<"family">>,    Family }
 	    ] = Struct,
-	    Ciphertext = crypto:aes_cbc_256_encrypt(Key, IVec, Plaintext),
+
+	    KeyMaterial = encserver_keysrv:getkey(KeyId),
+	    Ciphertext = crypto:aes_cbc_256_encrypt(KeyMaterial, IVec, Plaintext),
 	    Res = {struct, [ 
 			     { <<"ciphertext">>, base64:encode(Ciphertext) },
 			     { <<"iv">>,         base64:encode(IVec) },
@@ -72,7 +73,9 @@ crypto_op(Op, Req) ->
 	     { <<"keyid">>,      KeyId },
 	     { <<"family">>,     Family } 
 	    ] = Struct,
-	    Plaintext = crypto:aes_cbc_256_decrypt(Key, base64:decode(IVec), base64:decode(Ciphertext)),
+
+	    KeyMaterial = encserver_keysrv:getkey(KeyId),
+	    Plaintext = crypto:aes_cbc_256_decrypt(KeyMaterial, base64:decode(IVec), base64:decode(Ciphertext)),
 	    Res = {struct, [ 
 			     { <<"plaintext">>, Plaintext }
 			    ] 
