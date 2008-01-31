@@ -4,9 +4,9 @@ require File.dirname(__FILE__) + '/test_helper_rails'
 class ActsAsEncryptedTest < Test::Unit::TestCase
 
   def setup
-    full_hostname = `hostname`.strip
-    hostname = full_hostname.split('.')[0]
-    cryptoroot = File.expand_path(File.dirname(__FILE__) + "/../keys")
+    hostname = 'testhost'
+    cryptoroot = File.expand_path(File.dirname(__FILE__) + "/keys")
+
     config = {
       :SSLVerifyMode        => OpenSSL::SSL::VERIFY_PEER | OpenSSL::SSL::VERIFY_FAIL_IF_NO_PEER_CERT,
       :SSLPrivateKey        => OpenSSL::PKey::RSA.new(File.read("#{cryptoroot}/#{hostname}-server/#{hostname}-server_keypair.pem")),
@@ -25,17 +25,26 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     @ks.save
 
     config.delete(:initializing)
-    ActsAsEncrypted::Engine.engine = 'local'
+    ActsAsEncrypted::Engine.engine = :local
     ActsAsEncrypted::Engine.config = config
     ActsAsEncrypted::Engine.reload
     
-    server_bin = File.expand_path(File.dirname(__FILE__) + "/../bin/encryption_server.rb")
-    `#{server_bin} start`
+    test_root = File.expand_path(File.dirname(__FILE__))
+    server_bin = "#{test_root}/../bin/encryption_server.rb"
+    cryptoroot = "#{test_root}/keys"
+    `#{server_bin} stop -- --hostname testhost --cryptoroot #{cryptoroot}`
+    `#{server_bin} start -- --hostname testhost --cryptoroot #{cryptoroot}`
   end
     
   def teardown
-    server_bin = File.expand_path(File.dirname(__FILE__) + "/../bin/encryption_server.rb")
-    `#{server_bin} stop`    
+    test_root = File.expand_path(File.dirname(__FILE__))
+    server_bin = "#{test_root}/../bin/encryption_server.rb"
+    cryptoroot = "#{test_root}/keys"
+    `#{server_bin} stop -- --hostname testhost --cryptoroot #{cryptoroot}`
+
+    RawCreditcard.find(:all).each do |rc|
+      rc.destroy
+    end
   end
 
   # test with the local engine
@@ -45,9 +54,11 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
 
     ccnum = "1234567812344523"
     name = "A N Other"
+    type = "VISA"
 
     c.ccnum = ccnum
     c.cardholder = name
+    c.cardtype = type
     assert c.save
 
     assert_equal "4523", c.ccnum_lastfour
@@ -92,8 +103,9 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
   def test_default_key_only
     default = DefaultKeyFamily.new
     default.ccnum = '0000000000000000'
+    default.cardtype = 'VISA'
     assert default.save
-    assert_equal default.ccnum, '0000000000000000'
+    assert_equal '0000000000000000', default.ccnum 
 
     rc = RawCreditcard.find(default.id)
     assert rc
@@ -106,8 +118,10 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
 
     ccnum = "1234567812344523"
     name = "A N Other"
+    type = "VISA"
     c.ccnum = ccnum
     c.cardholder = name
+    c.cardtype = type
     assert c.save
 
     fc = Creditcard.find(c.id)
@@ -115,12 +129,55 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     assert_equal name, fc.cardholder
   end
 
+  def test_error_causes_validation_failure
+    # Error engine always raises CryptoFailureError
+    ActsAsEncrypted::Engine.engine = :error
+
+    assert_equal 0, Creditcard.count
+
+    c = Creditcard.new
+    assert c
+
+    ccnum = "1234567812344523"
+    name = "A N Other"
+    type = "VISA"
+    c.ccnum = ccnum
+    c.cardholder = name
+    c.cardtype = type
+
+    assert_equal false, c.save
+    assert_equal 1, c.errors.length
+    assert_equal 0, Creditcard.count
+  end
+
+  def test_error_causes_validation_failure_with_real_validation
+    # Error engine always raises CryptoFailureError
+    ActsAsEncrypted::Engine.engine = :error
+
+    assert_equal 0, Creditcard.count
+
+    c = Creditcard.new
+    assert c
+
+    # Leave type out, generate extra validation error
+    ccnum = "1234567812344523"
+    name = "A N Other"
+    c.ccnum = ccnum
+    c.cardholder = name
+
+    assert_equal false, c.save
+    assert_equal 2, c.errors.length
+    assert_equal 0, Creditcard.count
+  end
+
   def test_try_encrypting_nil
     c = Creditcard.new
     assert c
 
     ccnum = "1234567812344523"
+    type = "VISA"
     c.ccnum = ccnum
+    c.cardtype = type
     assert c.save
 
     assert_equal "4523", c.ccnum_lastfour
@@ -134,20 +191,24 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     c = Creditcard.new
     assert c
 
+    name = "A N Other"
     ccnum = "1234567812344523"
+    type = "VISA"
     c.ccnum = ccnum
+    c.cardholder = name
+    c.cardtype = type
     assert c.save
     engine1 = ActsAsEncrypted::Engine.engine.object_id
 
-    ccnum = "1234567812344524"
     c.ccnum = ccnum
+    c.cardholder = name
     assert c.save
     engine2 = ActsAsEncrypted::Engine.engine.object_id
 
     ActsAsEncrypted::Engine.reload
     
-    ccnum = "1234567812344525"
     c.ccnum = ccnum
+    c.cardholder = name
     assert c.save
     engine3 = ActsAsEncrypted::Engine.engine.object_id
     
@@ -161,8 +222,10 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
     assert c
     ccnum = "1234567812344523"
     name = "A N Other"
+    type = "VISA"
     c.ccnum = ccnum
     c.cardholder = name
+    c.cardtype = type
     assert c.save
     
     f = @ks.family('ccnum')
@@ -192,9 +255,8 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
   
   # test with the remote engine
   def test_creditcard_remote
-    cryptoroot = File.expand_path(File.dirname(__FILE__) + "/../keys")
-    full_hostname = `hostname`.strip
-    hostname = full_hostname.split('.')[0]
+    cryptoroot = File.expand_path(File.dirname(__FILE__) + "/keys")
+    hostname = 'testhost'
     config = {
       :SSLVerifyMode        => OpenSSL::SSL::VERIFY_PEER,
       :SSLCACertificateFile => "#{cryptoroot}/CA/cacert.pem",
@@ -202,7 +264,7 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
       :SSLCertificate       => OpenSSL::X509::Certificate.new(File.read("#{cryptoroot}/#{hostname}/cert_#{hostname}.pem")),
       :server               => 'localhost:3456'
     }    
-    ActsAsEncrypted::Engine.engine = 'remote'
+    ActsAsEncrypted::Engine.engine = :remote
     ActsAsEncrypted::Engine.config = config
     
     c = Creditcard.new
@@ -210,8 +272,10 @@ class ActsAsEncryptedTest < Test::Unit::TestCase
 
     ccnum = "1234567812344523"
     name = "A N Other"
+    type = "VISA"
     c.ccnum = ccnum
     c.cardholder = name
+    c.cardtype = type
     assert c.save
 
     assert_equal "4523", c.ccnum_lastfour

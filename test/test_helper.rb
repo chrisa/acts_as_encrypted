@@ -5,12 +5,14 @@ require 'test/unit'
   break if load "#{path}/bin/QuickCert"
 end
 
+testdir = File.expand_path(File.dirname(__FILE__))
+
 CA = {}
 CERTS = []
 
 CA[:hostname] = 'testhost'
 CA[:domainname] = 'testdomain'
-CA[:CA_dir] = File.join Dir.pwd, "CA"
+CA[:CA_dir] = 'CA'
 CA[:password] = '1234'
 
 CERTS << {
@@ -26,7 +28,6 @@ CERTS << {
 
 require 'QuickCert/defaults'
 
-testdir = File.expand_path(File.dirname(__FILE__))
 Dir.chdir(testdir) do 
   begin
     Dir.mkdir('keys')
@@ -44,3 +45,22 @@ Dir.chdir(testdir) do
   end
 end
 
+# Define a testing encryption engine which always causes an error.
+module ActsAsEncrypted
+  class Engine
+    class Error < Engine
+
+      def initialize(config)
+      end
+
+      def encrypt(family, keyid, plaintext)
+        raise CryptoFailureError.new("testing crypto failure (encrypt)")
+      end
+
+      def decrypt(family, keyid, iv, ciphertext)
+        raise CryptoFailureError.new("testing crypto failure (decrypt)")
+      end
+
+    end
+  end
+end

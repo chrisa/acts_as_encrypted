@@ -99,15 +99,10 @@ class Keytool < Cmd
       puts "Initializing new keystore"
     end
     
-    # establish the hostname, use to find generated keys/certs
-    full_hostname = `hostname`.strip
-    domainname = full_hostname.split('.')[1..-1].join('.')
-    hostname = full_hostname.split('.')[0]
-    
     config = {
       :SSLVerifyMode        => OpenSSL::SSL::VERIFY_PEER | OpenSSL::SSL::VERIFY_FAIL_IF_NO_PEER_CERT,
-      :SSLPrivateKey        => OpenSSL::PKey::RSA.new(File.read("#{options.cryptoroot}/#{hostname}-server/#{hostname}-server_keypair.pem")),
-      :SSLCertificate       => OpenSSL::X509::Certificate.new(File.read("#{options.cryptoroot}/#{hostname}-server/cert_#{hostname}-server.pem")),
+      :SSLPrivateKey        => OpenSSL::PKey::RSA.new(File.read("#{options.cryptoroot}/#{options.hostname}-server/#{options.hostname}-server_keypair.pem")),
+      :SSLCertificate       => OpenSSL::X509::Certificate.new(File.read("#{options.cryptoroot}/#{options.hostname}-server/cert_#{options.hostname}-server.pem")),
       :SSLCACertificateFile => "#{options.cryptoroot}/CA/cacert.pem",
       :filename             => options.keystore,
       :initializing         => options.initializing

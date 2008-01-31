@@ -13,6 +13,8 @@ ActiveRecord::Schema.define(:version => 1) do
 
     t.column :ccnum_keyid, :string
     t.column :name_keyid, :string
+    
+    t.column :cardtype, :string
   end
 end
 
@@ -21,6 +23,7 @@ class Creditcard < ActiveRecord::Base
   encrypts :ccnum, :lastfour => lambda { |cc| cc[-4,4] }
   encrypts :cardholder, :family => :name, 
                         :initial => lambda { |n| n[0,1] }
+  validates_presence_of :cardtype
 end
 
 # For looking directly at the creditcards table in tests

@@ -10,6 +10,9 @@ module ActsAsEncrypted
       options.keystore = nil
       options.initializing = false
       options.server = 'localhost:3456'
+
+      full_hostname = `hostname`.strip
+      options.hostname = full_hostname.split('.')[0]
       
       # parse options
       opts = OptionParser.new do |opts|
@@ -35,6 +38,11 @@ module ActsAsEncrypted
         opts.on("-s", "--server SERVER",
                 "Server host:port") do |s|
           options.server = s
+        end
+
+        opts.on("-h", "--hostname HOSTNAME",
+                "Hostname, for key/cert locations") do |s|
+          options.hostname = s
         end
       end
       opts.parse!(args)

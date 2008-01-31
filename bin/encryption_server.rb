@@ -26,15 +26,13 @@ if ARGV.include?('--')
     server_opts.unshift opt
   end 
 end
-options = ActsAsEncrypted::Options.parse(server_opts)
 
-full_hostname = `hostname`.strip
-hostname = full_hostname.split('.')[0]
+options = ActsAsEncrypted::Options.parse(server_opts)
 
 config = {
   :SSLVerifyMode        => OpenSSL::SSL::VERIFY_PEER | OpenSSL::SSL::VERIFY_FAIL_IF_NO_PEER_CERT,
-  :SSLPrivateKey        => OpenSSL::PKey::RSA.new(File.read("#{options.cryptoroot}/#{hostname}-server/#{hostname}-server_keypair.pem")),
-  :SSLCertificate       => OpenSSL::X509::Certificate.new(File.read("#{options.cryptoroot}/#{hostname}-server/cert_#{hostname}-server.pem")),
+  :SSLPrivateKey        => OpenSSL::PKey::RSA.new(File.read("#{options.cryptoroot}/#{options.hostname}-server/#{options.hostname}-server_keypair.pem")),
+  :SSLCertificate       => OpenSSL::X509::Certificate.new(File.read("#{options.cryptoroot}/#{options.hostname}-server/cert_#{options.hostname}-server.pem")),
   :SSLCACertificateFile => "#{options.cryptoroot}/CA/cacert.pem",
   :filename             => options.keystore,
   :server               => options.server

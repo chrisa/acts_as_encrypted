@@ -134,6 +134,9 @@ module ActsAsEncrypted
       decrypt
     end
 
+    # Override validate with our encrypt method: causes objects being
+    # saved to have relevant columns encrypted -- any errors raised
+    # during the encryption process result in validation failure. 
     def validate
       encrypt
     end
@@ -144,6 +147,8 @@ module ActsAsEncrypted
     end
 
     private 
+
+    # Record encryption ops in the Rails log.
     def log_operation(column, op, sev=:info)
       id = (self.id.nil?) ? 'new' : self.id.to_s
       if ActiveRecord::Base.colorize_logging
@@ -155,6 +160,8 @@ module ActsAsEncrypted
     end
   end
     
+  # Override for write_attribute, to delete the cached decrypted
+  # value for the attribute being written.
   class ActiveRecord::Base
     def write_attribute_with_tainting(attr_name, value)
       if encrypts_cols.include?(attr_name)
@@ -176,6 +183,7 @@ module ActsAsEncrypted
       class_inheritable_reader :family
       self.send(:include, ActsAsEncrypted::InstanceMethods)
 
+      after_save        :decrypt
       after_initialize  :decrypt
       after_find        :decrypt
 

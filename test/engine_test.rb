@@ -4,9 +4,8 @@ require 'acts_as_encrypted/engine'
 class EngineTest < Test::Unit::TestCase
   
   def setup
-    full_hostname = `hostname`.strip
-    hostname = full_hostname.split('.')[0]
-    cryptoroot = File.expand_path(File.dirname(__FILE__) + "/../keys")
+    hostname = 'testhost'
+    cryptoroot = File.expand_path(File.dirname(__FILE__) + "/keys")
     config = {
       :SSLVerifyMode        => OpenSSL::SSL::VERIFY_PEER | OpenSSL::SSL::VERIFY_FAIL_IF_NO_PEER_CERT,
       :SSLPrivateKey        => OpenSSL::PKey::RSA.new(File.read("#{cryptoroot}/#{hostname}-server/#{hostname}-server_keypair.pem")),
@@ -25,7 +24,7 @@ class EngineTest < Test::Unit::TestCase
     @ks.save
 
     config.delete(:initializing)
-    ActsAsEncrypted::Engine.engine = 'local'
+    ActsAsEncrypted::Engine.engine = :local
     ActsAsEncrypted::Engine.config = config
     ActsAsEncrypted::Engine.reload
   end
